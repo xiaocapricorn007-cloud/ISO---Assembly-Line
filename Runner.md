@@ -55,3 +55,9 @@ Every time a major design decision is finalized or a significant change is commi
 - Implemented \simpy.Container\ for Raw Materials inventory.
 - Wired SimPy physics directly into the new \IdendefEngine\ (passing synthetic tensors) and \VetoEngine\ (triggering checks per part).
 - Phase 4 Complete.
+
+**[2026-08-27] - Advanced I-DENDEF Parameter Tuning**
+- Configured Vision CNN for \3x224x224\ RGB images (YOLO/Mask R-CNN mock).
+- Configured Vibration model for 500-step windows with FFT processing to train Isolation Forest on frequency domain.
+- Upgraded PLC logic to strictly enforce 3D Euclidean spatial coordinates (X, Y, Z) with a 2.0mm tolerance.
+- Tightened S-TATECON/O-PTINECK thresholds to [Min: 58s, Max: 65s] to force Veto Engine triggers.

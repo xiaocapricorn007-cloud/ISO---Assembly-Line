@@ -23,8 +23,8 @@ class StateconEngine:
         # Global Parameters
         self.global_vars = {
             "target_cycle_time": 60.0,
-            "min_time_threshold": 50.0, # Too early
-            "max_time_threshold": 75.0, # Too late (bottleneck)
+            "min_time_threshold": 58.0, # Aggressively tight: Too early
+            "max_time_threshold": 65.0, # Aggressively tight: Too late (bottleneck)
             "structural_efficiency": 0.90
         }
 

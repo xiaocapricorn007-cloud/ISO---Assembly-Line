@@ -2,6 +2,7 @@ import simpy
 import random
 import time
 import torch
+import numpy as np
 from core.statecon import StateconEngine
 from core.idendef import IdendefEngine
 from core.optineck import OptineckEngine
@@ -30,21 +31,28 @@ class FactorySimulation:
         }
 
     def generate_synthetic_telemetry(self, station_id, is_faulty):
-        """Generates dummy tensors and arrays for the 3 I-DENDEF models."""
-        # 1. Vision CNN (1, 1, 28, 28)
-        img = torch.randn(1, 1, 28, 28)
+        """Generates advanced dummy tensors and arrays for the 3 I-DENDEF models."""
+        # 1. Vision CNN (1, 3, 224, 224) - High-res RGB tensor
+        img = torch.randn(1, 3, 224, 224)
         
-        # 2. Vibration Isolation Forest (10 time steps)
+        # 2. Vibration Isolation Forest (500 time steps for FFT)
+        t = np.linspace(0, 2, 500)
         if is_faulty:
-            vib = [random.uniform(5.0, 10.0) for _ in range(10)] # Anomalous
+            # Inject a weird frequency anomaly (e.g., 80Hz rattle)
+            vib = np.sin(2 * np.pi * 10 * t) + 2.0 * np.sin(2 * np.pi * 80 * t) + np.random.normal(0, 0.2, 500)
         else:
-            vib = [random.uniform(-1.0, 1.0) for _ in range(10)] # Normal
+            # Normal baseline frequencies
+            vib = np.sin(2 * np.pi * 10 * t) + 0.5 * np.sin(2 * np.pi * 50 * t) + np.random.normal(0, 0.2, 500)
             
-        # 3. PLC Logic Position (expected vs actual)
-        exp_pos = 100.0
-        act_pos = 100.0 if not is_faulty else random.uniform(80.0, 90.0)
+        # 3. PLC Logic 3D Position (Expected vs Actual XYZ)
+        exp_xyz = (100.0, 50.0, 200.0)
+        if is_faulty:
+            # 3.0mm deviation on X axis (violates 2.0mm tolerance)
+            act_xyz = (103.0, 50.0, 200.0) 
+        else:
+            act_xyz = (100.5, 49.8, 200.1) # Small acceptable variance
         
-        return img, vib, exp_pos, act_pos
+        return img, vib.tolist(), exp_xyz, act_xyz
 
     def run_station(self, station_id, upstream_buffer, downstream_buffer):
         """Simulates a single station's operations on a part."""
