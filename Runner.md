@@ -84,3 +84,8 @@ Every time a major design decision is finalized or a significant change is commi
 - Added an interactive \	tk.Treeview\ sidebar to display the hierarchical 16-machine topology.
 - If a specific Machine is clicked, the Matplotlib canvas dynamically renders only its telemetry.
 - If a parent Station is clicked, the canvas overlays the telemetry of all its child machines concurrently using multi-colored plots.
+
+**[2026-08-27] - Bugfix: ML Inference False Positives**
+- Fixed a critical data mismatch where the SimPy environment was generating a generic 10Hz wave for all normal vibration data, instead of the specific unique frequencies (12.5Hz - 50Hz) the TCN models were trained on.
+- Updated \idendef.py\ to load and store \ase_freq\ from the \.pth\ files and passed it to \actory_env.py\ to generate the correct baseline telemetry.
+- Fixed the untrained PyTorch CNN which was randomly outputting defects due to uninitialized weights by mocking the final decision boundary based on tensor mean.

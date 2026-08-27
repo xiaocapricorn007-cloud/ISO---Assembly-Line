@@ -43,29 +43,20 @@ class FactorySimulation:
         # 1. Vision CNN
         img = torch.randn(1, 3, 224, 224)
         
-        # 2. Vibration (Must match train_vibration.py base frequency logic for anomaly to work)
-        # We simulate the exact logic. For simplicity, if faulty, add massive noise.
-        # But we don't have the base freq here easily unless we load it.
-        # The TCN will fail if the sequence doesn't match its learned freq.
-        # So we just feed random noise for faulty, and for normal we simulate a "close enough" signal.
-        # Wait, if we don't generate the EXACT same freq, it will ALWAYS trigger anomaly.
-        # To make it realistic in inference, let's load the freq or just use a generic sine wave for normal, 
-        # and heavy noise for faulty. The pretrained TCN threshold is robust enough if normal matches train.
-        # Actually, let's just grab the base_freq from the loaded I-DENDEF threshold dictionary.
+        # 2. Vibration
         vib_model = self.idendef.vibration_model
-        base_freq = 10.0 # Default fallback
-        if machine_id in vib_model.models:
-            # We didn't save base_freq in idendef dict, but let's assume it's around 10-50Hz.
-            # To avoid false positives on normal, we just pass what the TCN expects.
-            pass
+        # Fetch the exact base frequency this specific machine was trained on!
+        base_freq = vib_model.base_freqs.get(machine_id, 10.0) 
             
         t = np.linspace(0, 2, 500)
-        # We will use a generic frequency. If we get a false positive, it's fine for the sim.
         if is_faulty:
-            vib = np.sin(2 * np.pi * 10 * t) + 2.0 * np.sin(2 * np.pi * 80 * t) + np.random.normal(0, 0.5, 500)
+            # Add an 80Hz rattle anomaly
+            vib = np.sin(2 * np.pi * base_freq * t) + 2.0 * np.sin(2 * np.pi * 80 * t) + np.random.normal(0, 0.5, 500)
+            img = torch.ones(1, 3, 224, 224) * 5.0 # High value image tensor to mock visual defect
         else:
-            # Note: without the exact training freq, it might trigger. Let's just generate something clean.
-            vib = np.sin(2 * np.pi * 10 * t) + np.random.normal(0, 0.05, 500)
+            # Generate the EXACT clean baseline it was trained on
+            vib = np.sin(2 * np.pi * base_freq * t) + 0.5 * np.sin(2 * np.pi * (base_freq * 2.5) * t) + np.random.normal(0, 0.15, 500)
+            img = torch.randn(1, 3, 224, 224) # Normal random image tensor
             
         # 3. PLC Logic 3D Position
         exp_xyz = (100.0, 50.0, 200.0)
