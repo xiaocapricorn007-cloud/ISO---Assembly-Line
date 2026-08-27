@@ -67,17 +67,13 @@ def init_db():
     )
     ''')
     
+    # Clear ghost data from previous runs
+    cursor.execute('DELETE FROM machines')
+    cursor.execute('DELETE FROM telemetry_logs')
+    cursor.execute('DELETE FROM metrics')
+    cursor.execute('DELETE FROM phantom_logs')
     conn.commit()
     
-    # Initialize basic stations
-    stations = ['Station_A', 'Station_B', 'Station_C_Dark', 'Station_D', 'Station_E']
-    for st in stations:
-        cursor.execute('''
-        INSERT OR IGNORE INTO machines (station_id, status, current_cycle_time, target_cycle_time, operator_id, last_updated)
-        VALUES (?, 'IDLE', 0.0, 60.0, 'NONE', ?)
-        ''', (st, datetime.now()))
-        
-    conn.commit()
     conn.close()
 
 if __name__ == "__main__":

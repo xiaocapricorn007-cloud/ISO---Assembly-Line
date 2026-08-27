@@ -13,7 +13,14 @@
         .alert-red { color: #ef4444 !important; font-weight: bold; }
     </style>
 </head>
-<body class="bg-gray-900 text-white font-sans antialiased h-screen flex flex-col">
+<body class="bg-gray-900 text-white font-sans antialiased h-screen flex flex-col relative">
+
+    <!-- Stabilizing Overlay -->
+    <div id="startup-overlay" class="absolute inset-0 bg-gray-900 z-50 flex flex-col items-center justify-center">
+        <div class="text-3xl font-bold text-blue-400 mb-4 animate-pulse">Initializing Digital Twin...</div>
+        <div class="text-xl text-gray-400">Stabilizing S-TATECON & I-DENDEF Telemetry Links</div>
+        <div class="mt-8 border-t-4 border-blue-500 w-48 rounded animate-bounce"></div>
+    </div>
 
     <!-- Header -->
     <header class="bg-gray-800 p-4 shadow-md flex justify-between items-center">
@@ -237,10 +244,19 @@
         }
 
         initChart();
-        setInterval(() => {
+        
+        // Wait 3 seconds to let backend stabilize and clear ghost rows
+        setTimeout(() => {
+            document.getElementById('startup-overlay').classList.add('hidden');
+            // Initial fetch
             fetchState();
             fetchTelemetry();
-        }, 1000);
+            // Start polling every 1 second
+            setInterval(() => {
+                fetchState();
+                fetchTelemetry();
+            }, 1000);
+        }, 3000);
     </script>
 </body>
 </html>

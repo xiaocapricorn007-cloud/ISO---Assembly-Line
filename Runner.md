@@ -108,3 +108,8 @@ Every time a major design decision is finalized or a significant change is commi
 - Implemented a repair mechanic in the simulation: When an anomaly occurs, the machine goes OFFLINE for 50 simulated seconds (displaying RED), before rectifying itself back to normal (GREEN).
 - Separated the web UI into multiple Tabs (Dashboard and S-TATECON) for a cleaner layout.
 - Added a live Alarm Timelog to the Dashboard to track exactly when and where past anomalies occurred.
+
+**[2026-08-27] - DB Wipe & Startup Stabilizer**
+- Cleared a massive logic bug where old ghost records (from previous test runs) in SQLite were permanently triggering the UI dashboard alarm.
+- Updated \db.py\ to forcefully TRUNCATE/DELETE all telemetry, metric, and machine state tables upon a fresh \masterstart\ boot.
+- Implemented a 3-second 'Initializing Digital Twin' splash overlay on the frontend web dashboard to pause polling, allowing the backend to fully stabilize its data streams before rendering.
