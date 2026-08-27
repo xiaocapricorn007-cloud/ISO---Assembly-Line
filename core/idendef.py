@@ -3,39 +3,7 @@ import torch
 import torch.nn as nn
 from sklearn.ensemble import IsolationForest
 
-# ---------------------------------------------------------
-# 1. VISUAL DEFECT DETECTION (Mocked YOLO / Mask R-CNN structure)
-# ---------------------------------------------------------
-class MockYOLOCNN(nn.Module):
-    def __init__(self):
-        super(MockYOLOCNN, self).__init__()
-        # Expects a 3x224x224 RGB image (Standard for ResNet/YOLO backbones)
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=7, stride=2, padding=3)
-        self.pool = nn.MaxPool2d(2, 2)
-        # Simplified FC layer for simulation (16 channels * 56 * 56 spatial dims)
-        self.fc = nn.Linear(16 * 56 * 56, 2)
-
-    def forward(self, x):
-        x = self.pool(torch.relu(self.conv1(x)))
-        x = x.view(x.size(0), -1)
-        x = self.fc(x)
-        return x
-
-class VisualDefectModel:
-    def __init__(self):
-        self.model = MockYOLOCNN()
-        self.model.eval() 
-        
-    def detect(self, rgb_image_tensor):
-        """
-        Passes a synthetic image (1, 3, 224, 224) through the CNN.
-        Since it is untrained, we mock the final logic by checking if the tensor has a massive mean (injected during faults).
-        """
-        with torch.no_grad():
-            output = self.model(rgb_image_tensor)
-            
-        # Mock logic to prevent random untrained noise spam
-        return rgb_image_tensor.mean().item() > 2.0
+# Vision Model Temporarily Disabled for Memory Optimization
 
 # ---------------------------------------------------------
 # 2. VIBRATION ANOMALY DETECTION (Pretrained TCN-AutoEncoder)
@@ -118,19 +86,16 @@ class PLCLogicChecker:
 # ---------------------------------------------------------
 class IdendefEngine:
     def __init__(self):
-        self.visual_model = VisualDefectModel()
         self.vibration_model = VibrationAnomalyModel()
         self.plc_logic = PLCLogicChecker()
         
-    def evaluate_station(self, machine_id, rgb_tensor, vib_500, exp_xyz, act_xyz):
-        defect_visual = self.visual_model.detect(rgb_tensor)
+    def evaluate_station(self, machine_id, vib_500, exp_xyz, act_xyz):
         defect_vib = self.vibration_model.detect(machine_id, vib_500)
         defect_plc = self.plc_logic.detect(machine_id, exp_xyz, act_xyz)
         
-        is_defect = defect_visual or defect_vib or defect_plc
+        is_defect = defect_vib or defect_plc
         
         reasons = []
-        if defect_visual: reasons.append("Vision-YOLO")
         if defect_vib: reasons.append(f"TCN-{machine_id}")
         if defect_plc: reasons.append("PLC-3D-Dev")
             

@@ -40,9 +40,6 @@ class FactorySimulation:
         }
 
     def generate_synthetic_telemetry(self, machine_id, is_faulty):
-        # 1. Vision CNN
-        img = torch.randn(1, 3, 224, 224)
-        
         # 2. Vibration
         vib_model = self.idendef.vibration_model
         # Fetch the exact base frequency this specific machine was trained on!
@@ -52,11 +49,9 @@ class FactorySimulation:
         if is_faulty:
             # Add an 80Hz rattle anomaly
             vib = np.sin(2 * np.pi * base_freq * t) + 2.0 * np.sin(2 * np.pi * 80 * t) + np.random.normal(0, 0.5, 500)
-            img = torch.ones(1, 3, 224, 224) * 5.0 # High value image tensor to mock visual defect
         else:
             # Generate the EXACT clean baseline it was trained on
             vib = np.sin(2 * np.pi * base_freq * t) + 0.5 * np.sin(2 * np.pi * (base_freq * 2.5) * t) + np.random.normal(0, 0.15, 500)
-            img = torch.randn(1, 3, 224, 224) # Normal random image tensor
             
         # 3. PLC Logic 3D Position
         exp_xyz = (100.0, 50.0, 200.0)
@@ -65,7 +60,7 @@ class FactorySimulation:
         else:
             act_xyz = (100.5, 49.8, 200.1)
         
-        return img, vib.tolist(), exp_xyz, act_xyz
+        return vib.tolist(), exp_xyz, act_xyz
 
     def process_part(self, part_id):
         """A single part flows through all stations."""
@@ -106,8 +101,8 @@ class FactorySimulation:
             yield self.env.timeout(actual_ct)
 
             # 3. I-DENDEF Check
-            img, vib, exp_pos, act_pos = self.generate_synthetic_telemetry(machine_id, is_faulty)
-            is_defect, reasons = self.idendef.evaluate_station(machine_id, img, vib, exp_pos, act_pos)
+            vib, exp_pos, act_pos = self.generate_synthetic_telemetry(machine_id, is_faulty)
+            is_defect, reasons = self.idendef.evaluate_station(machine_id, vib, exp_pos, act_pos)
             
             # Log vibration telemetry for the dashboard
             import json

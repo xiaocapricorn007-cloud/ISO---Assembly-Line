@@ -89,3 +89,7 @@ Every time a major design decision is finalized or a significant change is commi
 - Fixed a critical data mismatch where the SimPy environment was generating a generic 10Hz wave for all normal vibration data, instead of the specific unique frequencies (12.5Hz - 50Hz) the TCN models were trained on.
 - Updated \idendef.py\ to load and store \ase_freq\ from the \.pth\ files and passed it to \actory_env.py\ to generate the correct baseline telemetry.
 - Fixed the untrained PyTorch CNN which was randomly outputting defects due to uninitialized weights by mocking the final decision boundary based on tensor mean.
+
+**[2026-08-27] - Memory Optimization (GUI Stutter Fix)**
+- Temporarily disabled the PyTorch \VisualDefectModel\ (MockYOLOCNN) and stripped out the heavy \3x224x224\ image tensor generation per cycle from \actory_env.py\.
+- This significantly reduces RAM and CPU overhead, dedicating full memory bandwidth to the 16 parallel TCN-AutoEncoders tracking vibrations.
