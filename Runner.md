@@ -67,3 +67,8 @@ Every time a major design decision is finalized or a significant change is commi
 - Configured \actory_env.py\ to serialize and log vibration tensors to the DB per cycle.
 - Upgraded \gui_dashboard.py\ to use \	tk.Notebook\ for modular tabs.
 - Integrated \matplotlib.backends.backend_tkagg\ to plot live, dynamic vibration waves directly inside the I-DENDEF tab, triggering red alerts upon anomaly detection.
+
+**[2026-08-27] - Master Orchestrator Script**
+- Implemented \masterstart.py\ to natively orchestrate the startup sequence (DB -> GUI -> Sim).
+- Configured child process stdout/stderr capture to prefix logs with \[GUI]\ and \[SIM]\ in a unified master terminal.
+- Added graceful shutdown handling on \Ctrl+C\.
