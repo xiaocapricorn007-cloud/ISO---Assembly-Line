@@ -49,3 +49,9 @@ Every time a major design decision is finalized or a significant change is commi
 - Rewrote \core/statecon.py\ as a Singleton memory hub to serve global variables directly to other modules.
 - Rewrote \core/optineck.py\ to rely on strict threshold time-based checks (too early/too late).
 - Scrapped Streamlit \pp.py\ in favor of a native \	kinter\ GUI window (\gui_dashboard.py\).
+
+**[2026-08-27] - SimPy V2 Buffer & Inventory Upgrade**
+- Rewrote \simulation/factory_env.py\ to use \simpy.Store\ for sequential inter-station buffering.
+- Implemented \simpy.Container\ for Raw Materials inventory.
+- Wired SimPy physics directly into the new \IdendefEngine\ (passing synthetic tensors) and \VetoEngine\ (triggering checks per part).
+- Phase 4 Complete.

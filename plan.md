@@ -13,8 +13,8 @@
 - [x] Implement sequential checks: Severity Override (Catastrophic Jam), Material Check (Starvation Risk), Whiplash Veto (Cooldown), Physics Check (Conveyor Speed).
 
 ## Phase 4: SimPy Environment Remodel
-- [ ] **Buffers**: Add Buffer Queues between stations in `simulation/factory_env.py` to handle "Throttle Flow / Sub-line Buffering" when Severity Override triggers.
-- [ ] **Inventory**: Integrate `simpy.Container` to physically model raw material inventory and trigger the Material Check starvation naturally.
+- [x] **Buffers**: Add Buffer Queues between stations in `simulation/factory_env.py` to handle "Throttle Flow / Sub-line Buffering" when Severity Override triggers.
+- [x] **Inventory**: Integrate `simpy.Container` to physically model raw material inventory and trigger the Material Check starvation naturally.
 
 ## Phase 5: Dashboard & Integration
 - [x] Update `core/optineck.py` to use strict time-based boundary checks.
