@@ -44,3 +44,8 @@ Every time a major design decision is finalized or a significant change is commi
 - Added PyTorch/Torchvision/OpenCV to requirements.txt.
 - Rewrote \core/idendef.py\ into three dedicated models (PyTorch CNN for Vision, Isolation Forest for Vibration, Deterministic Logic for PLC) trained on synthetic data.
 - Created \core/veto_engine.py\ to house the sequential Constraint Verification Logic.
+
+**[2026-08-27] - O-PTINECK and GUI Update**
+- Rewrote \core/statecon.py\ as a Singleton memory hub to serve global variables directly to other modules.
+- Rewrote \core/optineck.py\ to rely on strict threshold time-based checks (too early/too late).
+- Scrapped Streamlit \pp.py\ in favor of a native \	kinter\ GUI window (\gui_dashboard.py\).

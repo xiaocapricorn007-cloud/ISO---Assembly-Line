@@ -17,5 +17,6 @@
 - [ ] **Inventory**: Integrate `simpy.Container` to physically model raw material inventory and trigger the Material Check starvation naturally.
 
 ## Phase 5: Dashboard & Integration
-- [ ] Update SQLite schema in `db.py` to track Buffer states and Veto Engine decisions.
-- [ ] Update `app.py` to visualize the new Buffer levels, Veto triggers, and LSTM Fatigue metrics alongside the DEY.
+- [x] Update `core/optineck.py` to use strict time-based boundary checks.
+- [x] Refactor `core/statecon.py` as a singleton holding global variables.
+- [x] Replace Streamlit with a native Tkinter desktop window (`gui_dashboard.py`).

@@ -6,10 +6,31 @@ from db import get_connection
 class StateconEngine:
     """
     S-TATECON: The Digital Ontology & State Hub
-    Handles Auto-Validation (Phantom State Fix) and Live State.
+    The single source of truth. Holds global variables and live state.
+    Both I-DENDEF and O-PTINECK must retrieve parameters from here.
     """
-    def __init__(self):
+    _instance = None
+    
+    # Singleton pattern so GUI and SimPy share the exact same state object in memory
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(StateconEngine, cls).__new__(cls)
+            cls._instance._init_state()
+        return cls._instance
+
+    def _init_state(self):
         self.conn = get_connection()
+        # Global Parameters
+        self.global_vars = {
+            "target_cycle_time": 60.0,
+            "min_time_threshold": 50.0, # Too early
+            "max_time_threshold": 75.0, # Too late (bottleneck)
+            "structural_efficiency": 0.90
+        }
+
+    def get_global_var(self, key):
+        """Allows I-DENDEF and O-PTINECK to retrieve parameters."""
+        return self.global_vars.get(key)
         
     def update_machine_state(self, station_id, status, current_cycle_time):
         cursor = self.conn.cursor()
@@ -21,21 +42,15 @@ class StateconEngine:
         self.conn.commit()
 
     def process_human_input(self, station_id, human_reported_status):
-        """
-        The Auto-Validation Layer: Prevent Phantom State.
-        Checks human input against PLC (database).
-        """
+        """Auto-Validation Layer (Phantom State Check)."""
         cursor = self.conn.cursor()
         cursor.execute('SELECT status FROM machines WHERE station_id = ?', (station_id,))
         plc_status = cursor.fetchone()[0]
         
-        # If PLC says BROKEN, but human says RUNNING -> VETO
         if plc_status == 'BROKEN' and human_reported_status == 'RUNNING':
-            action = "VETO_FREEZE"
-            self._log_phantom(human_reported_status, plc_status, action)
-            return False # Input rejected
-            
-        return True # Input accepted
+            self._log_phantom(human_reported_status, plc_status, "VETO_FREEZE")
+            return False 
+        return True
 
     def _log_phantom(self, human, plc, action):
         cursor = self.conn.cursor()
@@ -44,4 +59,3 @@ class StateconEngine:
         VALUES (?, ?, ?, ?)
         ''', (datetime.now(), human, plc, action))
         self.conn.commit()
-        print(f"[S-TATECON VETO] Blocked human input '{human}' contradicting PLC '{plc}'")
