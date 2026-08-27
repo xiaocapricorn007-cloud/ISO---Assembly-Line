@@ -93,3 +93,8 @@ Every time a major design decision is finalized or a significant change is commi
 **[2026-08-27] - Memory Optimization (GUI Stutter Fix)**
 - Temporarily disabled the PyTorch \VisualDefectModel\ (MockYOLOCNN) and stripped out the heavy \3x224x224\ image tensor generation per cycle from \actory_env.py\.
 - This significantly reduces RAM and CPU overhead, dedicating full memory bandwidth to the 16 parallel TCN-AutoEncoders tracking vibrations.
+
+**[2026-08-27] - Web Dashboard Pivot**
+- Replaced the \Tkinter\ Python GUI with a \Flask\ web server (\web_app.py\).
+- Designed a modern HTML/CSS frontend (\	emplates/index.html\) using Tailwind CSS and Chart.js.
+- The web dashboard queries telemetry endpoints to render 60FPS multi-line overlaid vibration charts instantly in the browser, eliminating the Python GUI bottlenecks.

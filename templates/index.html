@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ISO Digital Twin - Web Dashboard</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js for graphing -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="bg-gray-800 p-4 shadow-md flex justify-between items-center">
+        <h1 class="text-2xl font-bold text-blue-400">ISO Digital Twin (V2)</h1>
+        <div class="flex gap-8">
+            <div class="text-xl">DEY: <span id="dey-val" class="font-bold text-green-400">--</span></div>
+            <div class="text-xl">Bottleneck: <span id="btl-val" class="font-bold text-red-400">--</span></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <div class="flex flex-1 overflow-hidden">
+        
+        <!-- Sidebar Treeview -->
+        <div class="w-64 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
+            <h2 class="text-lg font-bold mb-4 text-gray-300">Topology</h2>
+            <ul class="space-y-2">
+                {% for station, count in topology.items() %}
+                <li>
+                    <div class="cursor-pointer font-bold text-blue-300 hover:text-blue-100" onclick="selectNode('{{ station }}')">
+                        📁 {{ station }}
+                    </div>
+                    <ul class="pl-6 mt-1 space-y-1">
+                        {% for i in range(1, count + 1) %}
+                        <li class="cursor-pointer text-sm text-gray-400 hover:text-white" onclick="selectNode('{{ station }}_M{{ i }}')">
+                            ↳ {{ station }}_M{{ i }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Dashboard Area -->
+        <div class="flex-1 flex flex-col p-6 overflow-y-auto">
+            
+            <!-- I-DENDEF Alert Banner -->
+            <div id="alert-banner" class="w-full p-3 rounded mb-4 text-center text-xl font-bold bg-gray-800 text-green-400 border border-green-500">
+                I-DENDEF Status: NORMAL
+            </div>
+
+            <!-- Chart Area -->
+            <div class="bg-gray-800 p-4 rounded shadow-lg flex-1 min-h-[400px] mb-6">
+                <h3 class="text-lg font-bold mb-2">Live Telemetry: <span id="current-node" class="text-blue-400">None Selected</span></h3>
+                <div class="relative h-full w-full">
+                    <canvas id="telemetryChart"></canvas>
+                </div>
+            </div>
+
+            <!-- S-TATECON Table -->
+            <div class="bg-gray-800 p-4 rounded shadow-lg">
+                <h3 class="text-lg font-bold mb-4">S-TATECON Live Machine States</h3>
+                <table class="w-full text-left text-sm">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700">
+                            <th class="pb-2">Machine ID</th>
+                            <th class="pb-2">Status</th>
+                            <th class="pb-2">Cycle Time (s)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="machines-table">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+            
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        let currentNode = null;
+        let chartInstance = null;
+        const ctx = document.getElementById('telemetryChart').getContext('2d');
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+
+        function initChart() {
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: Array.from({length: 500}, (_, i) => i), datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: false, // Fast rendering
+                    elements: { point: { radius: 0 }, line: { borderWidth: 2 } },
+                    scales: {
+                        x: { display: false },
+                        y: { 
+                            grid: { color: '#374151' },
+                            ticks: { color: '#9ca3af' }
+                        }
+                    },
+                    plugins: { legend: { labels: { color: '#ffffff' } } }
+                }
+            });
+        }
+
+        function selectNode(nodeId) {
+            currentNode = nodeId;
+            document.getElementById('current-node').innerText = nodeId;
+        }
+
+        async function fetchState() {
+            try {
+                const res = await fetch('/api/state');
+                const data = await res.json();
+                
+                document.getElementById('dey-val').innerText = data.dey.toFixed(2) + ' units/hr';
+                document.getElementById('btl-val').innerText = data.bottleneck;
+
+                let tableHtml = '';
+                data.machines.forEach(m => {
+                    const statusColor = m.status === 'RUNNING' ? 'text-green-400' : 'text-red-400';
+                    tableHtml += `
+                        <tr class="border-b border-gray-700/50">
+                            <td class="py-2">${m.station_id}</td>
+                            <td class="py-2 font-bold ${statusColor}">${m.status}</td>
+                            <td class="py-2">${m.current_cycle_time.toFixed(1)} / ${m.target_cycle_time.toFixed(1)}</td>
+                        </tr>
+                    `;
+                });
+                document.getElementById('machines-table').innerHTML = tableHtml;
+            } catch (e) {}
+        }
+
+        async function fetchTelemetry() {
+            if (!currentNode) return;
+            
+            try {
+                const res = await fetch(`/api/telemetry?node=${currentNode}`);
+                const data = await res.json();
+                
+                let hasAnomaly = false;
+                let alertNodes = [];
+                
+                const datasets = data.map((m, idx) => {
+                    if (m.is_anomaly) {
+                        hasAnomaly = true;
+                        alertNodes.push(m.machine_id);
+                    }
+                    return {
+                        label: m.machine_id,
+                        data: m.vibration,
+                        borderColor: m.is_anomaly ? '#ef4444' : colors[idx % colors.length],
+                        tension: 0.1
+                    };
+                });
+                
+                chartInstance.data.datasets = datasets;
+                chartInstance.update();
+                
+                const banner = document.getElementById('alert-banner');
+                if (hasAnomaly) {
+                    banner.className = "w-full p-3 rounded mb-4 text-center text-xl font-bold bg-red-900/50 text-red-400 border border-red-500";
+                    banner.innerText = `I-DENDEF ALARM! Anomaly in: ${alertNodes.join(', ')}`;
+                } else {
+                    banner.className = "w-full p-3 rounded mb-4 text-center text-xl font-bold bg-gray-800 text-green-400 border border-green-500";
+                    banner.innerText = "I-DENDEF Status: NORMAL";
+                }
+            } catch (e) {}
+        }
+
+        initChart();
+        // Poll every 1 second
+        setInterval(() => {
+            fetchState();
+            fetchTelemetry();
+        }, 1000);
+    </script>
+</body>
+</html>

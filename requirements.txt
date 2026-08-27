@@ -11,3 +11,5 @@ torchvision>=0.15.0
 opencv-python>=4.8.0
 
 matplotlib>=3.7.0
+
+Flask>=3.0.0

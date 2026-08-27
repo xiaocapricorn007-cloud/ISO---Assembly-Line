@@ -28,19 +28,19 @@ def main():
     processes = []
     
     try:
-        # 2. Launch GUI Dashboard
-        print("[MASTER] Launching GUI Dashboard...")
+        # 2. Launch Web Server Dashboard
+        print("[MASTER] Launching Flask Web Server...")
         gui_proc = subprocess.Popen(
-            [sys.executable, "gui_dashboard.py"],
+            [sys.executable, "web_app.py"],
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT
         )
         processes.append(gui_proc)
         
         # Start background thread to stream GUI output
-        threading.Thread(target=stream_output, args=(gui_proc.stdout, "[GUI]"), daemon=True).start()
+        threading.Thread(target=stream_output, args=(gui_proc.stdout, "[WEB]"), daemon=True).start()
         
-        # Wait for GUI to boot
+        # Wait for Server to boot
         time.sleep(2.0)
         
         # 3. Launch Main Simulation
