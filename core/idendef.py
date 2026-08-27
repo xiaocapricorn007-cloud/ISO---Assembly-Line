@@ -36,38 +36,61 @@ class VisualDefectModel:
             return predicted.item() == 1 # 1 = Defect
 
 # ---------------------------------------------------------
-# 2. VIBRATION ANOMALY DETECTION (FFT + Isolation Forest)
+# 2. VIBRATION ANOMALY DETECTION (Pretrained TCN-AutoEncoder)
 # ---------------------------------------------------------
+import os
+from ml.tcn_ae import TCNAutoEncoder
+
 class VibrationAnomalyModel:
     def __init__(self):
-        # Increased contamination as we have tighter thresholds now
-        self.model = IsolationForest(contamination=0.05, random_state=42)
-        self._train_synthetic_fft()
+        self.models = {}
+        self.thresholds = {}
+        self._load_pretrained_models()
         
-    def _train_synthetic_fft(self):
-        """Trains on the Frequency Domain (FFT) of 500-step windows."""
-        fft_data = []
-        for _ in range(1000):
-            t = np.linspace(0, 2, 500) # 2 seconds, 500 samples (250Hz)
-            # Base frequencies + noise
-            vib = np.sin(2 * np.pi * 10 * t) + 0.5 * np.sin(2 * np.pi * 50 * t) + np.random.normal(0, 0.2, 500)
-            
-            # Compute FFT (Magnitude)
-            fft_mag = np.abs(np.fft.fft(vib))[:250] # Take positive frequencies
-            fft_data.append(fft_mag)
-            
-        self.model.fit(fft_data)
+    def _load_pretrained_models(self):
+        """Loads the individual TCN weights for all 16 machines."""
+        pretrained_dir = os.path.join("models", "pretrained")
         
-    def detect(self, vibration_time_series):
+        # If they don't exist, we can't load them (warn the user)
+        if not os.path.exists(pretrained_dir) or not os.listdir(pretrained_dir):
+            print("[WARNING] Pretrained TCN models not found! Run train_vibration.py first.")
+            return
+
+        for filename in os.listdir(pretrained_dir):
+            if filename.endswith(".pth"):
+                machine_id = filename.replace(".pth", "")
+                checkpoint = torch.load(os.path.join(pretrained_dir, filename), weights_only=True)
+                
+                model = TCNAutoEncoder(seq_len=500)
+                model.load_state_dict(checkpoint['model_state_dict'])
+                model.eval()
+                
+                self.models[machine_id] = model
+                self.thresholds[machine_id] = checkpoint['anomaly_threshold']
+                
+    def detect(self, machine_id, vibration_time_series):
         """
-        Takes 500 time-steps, converts to FFT, and predicts anomaly.
+        Takes 500 time-steps, computes reconstruction error, compares to machine's unique threshold.
         """
-        # Ensure 500 length
-        vib_array = np.array(vibration_time_series)
-        fft_mag = np.abs(np.fft.fft(vib_array))[:250].reshape(1, -1)
+        if machine_id not in self.models:
+            return False # Failsafe if not trained
+            
+        model = self.models[machine_id]
+        threshold = self.thresholds[machine_id]
         
-        pred = self.model.predict(fft_mag)
-        return pred[0] == -1
+        # Convert to tensor (1, 1, 500)
+        tensor_data = torch.tensor(vibration_time_series, dtype=torch.float32).view(1, 1, 500)
+        
+        with torch.no_grad():
+            reconstruction = model(tensor_data)
+            mse_loss = torch.mean((reconstruction - tensor_data)**2).item()
+            
+        # If reconstruction error > threshold, it's an anomaly!
+        if mse_loss > threshold:
+            print(f"[TCN ALERT] Machine {machine_id} Anomaly! Loss: {mse_loss:.4f} > {threshold:.4f}")
+            return True
+            
+        return False
 
 # ---------------------------------------------------------
 # 3. PLC LOGIC CHECK (3D Spatial Coordinate + Time)
@@ -76,18 +99,13 @@ class PLCLogicChecker:
     def __init__(self):
         self.spatial_tolerance_mm = 2.0 
         
-    def detect(self, expected_xyz, actual_xyz):
-        """
-        Checks 3D Euclidean distance between expected and actual robotic arm positions.
-        xyz tuples: (x, y, z)
-        """
+    def detect(self, machine_id, expected_xyz, actual_xyz):
         e = np.array(expected_xyz)
         a = np.array(actual_xyz)
-        
         distance_mm = np.linalg.norm(e - a)
         
         if distance_mm > self.spatial_tolerance_mm:
-            print(f"[PLC ALARM] 3D Deviation: {distance_mm:.2f}mm > {self.spatial_tolerance_mm}mm Tolerance!")
+            print(f"[PLC ALARM] Machine {machine_id} 3D Deviation: {distance_mm:.2f}mm > {self.spatial_tolerance_mm}mm")
             return True
         return False
 
@@ -100,16 +118,16 @@ class IdendefEngine:
         self.vibration_model = VibrationAnomalyModel()
         self.plc_logic = PLCLogicChecker()
         
-    def evaluate_station(self, rgb_tensor, vib_500, exp_xyz, act_xyz):
+    def evaluate_station(self, machine_id, rgb_tensor, vib_500, exp_xyz, act_xyz):
         defect_visual = self.visual_model.detect(rgb_tensor)
-        defect_vib = self.vibration_model.detect(vib_500)
-        defect_plc = self.plc_logic.detect(exp_xyz, act_xyz)
+        defect_vib = self.vibration_model.detect(machine_id, vib_500)
+        defect_plc = self.plc_logic.detect(machine_id, exp_xyz, act_xyz)
         
         is_defect = defect_visual or defect_vib or defect_plc
         
         reasons = []
         if defect_visual: reasons.append("Vision-YOLO")
-        if defect_vib: reasons.append("FFT-Vibration")
+        if defect_vib: reasons.append(f"TCN-{machine_id}")
         if defect_plc: reasons.append("PLC-3D-Dev")
             
         return is_defect, reasons

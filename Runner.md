@@ -72,3 +72,9 @@ Every time a major design decision is finalized or a significant change is commi
 - Implemented \masterstart.py\ to natively orchestrate the startup sequence (DB -> GUI -> Sim).
 - Configured child process stdout/stderr capture to prefix logs with \[GUI]\ and \[SIM]\ in a unified master terminal.
 - Added graceful shutdown handling on \Ctrl+C\.
+
+**[2026-08-27] - Machine Granularity & Pre-Trained TCN Pipeline**
+- Expanded stations into 16 distinct machines (Station A: 3, B: 2, C: 5, D: 4, E: 2).
+- Created \	rain_vibration.py\ to generate unique datasets per machine and pre-train 16 distinct PyTorch TCN-AutoEncoders.
+- Refactored \idendef.py\ to load pre-trained weights from \models/pretrained/\ instead of training in-memory.
+- Refactored SimPy environment to use \simpy.Resource\ to model parallel machines with independent cycle times and telemetry streams.
