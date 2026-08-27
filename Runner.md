@@ -20,3 +20,11 @@ Every time a major design decision is finalized or a significant change is commi
 - Created docs/References directory.
 - Copied challenge PDFs from local Downloads folder into the repository.
 - Committed and pushed PDFs to GitHub.
+
+**[2026-08-27] - Scaffolded Core Architecture**
+- Created plan.md to track implementation.
+- Scaffolded db.py for SQLite setup.
+- Implemented core/statecon.py, core/idendef.py, and core/optineck.py with mock logic.
+- Set up SimPy environment in simulation/factory_env.py.
+- Built Streamlit dashboard entry point in pp.py.
+- Added equirements.txt.
