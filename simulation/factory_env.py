@@ -82,6 +82,15 @@ class FactorySimulation:
             img, vib, exp_pos, act_pos = self.generate_synthetic_telemetry(station_id, is_faulty)
             is_defect, reasons = self.idendef.evaluate_station(img, vib, exp_pos, act_pos)
             
+            # Log vibration telemetry for the dashboard
+            import json
+            cursor = self.statecon.conn.cursor()
+            cursor.execute('''
+            INSERT INTO telemetry_logs (timestamp, station_id, vibration_data, is_anomaly)
+            VALUES (?, ?, ?, ?)
+            ''', (time.strftime('%Y-%m-%d %H:%M:%S'), station_id, json.dumps(vib), is_defect))
+            self.statecon.conn.commit()
+            
             status = 'BROKEN' if is_defect else 'RUNNING'
             self.statecon.update_machine_state(station_id, status, actual_ct)
 

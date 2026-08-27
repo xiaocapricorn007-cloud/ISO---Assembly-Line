@@ -61,3 +61,9 @@ Every time a major design decision is finalized or a significant change is commi
 - Configured Vibration model for 500-step windows with FFT processing to train Isolation Forest on frequency domain.
 - Upgraded PLC logic to strictly enforce 3D Euclidean spatial coordinates (X, Y, Z) with a 2.0mm tolerance.
 - Tightened S-TATECON/O-PTINECK thresholds to [Min: 58s, Max: 65s] to force Veto Engine triggers.
+
+**[2026-08-27] - Advanced Interactive GUI Dashboard**
+- Added \	elemetry_logs\ table to SQLite schema (\db.py\) to track vibration strings.
+- Configured \actory_env.py\ to serialize and log vibration tensors to the DB per cycle.
+- Upgraded \gui_dashboard.py\ to use \	tk.Notebook\ for modular tabs.
+- Integrated \matplotlib.backends.backend_tkagg\ to plot live, dynamic vibration waves directly inside the I-DENDEF tab, triggering red alerts upon anomaly detection.

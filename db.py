@@ -56,6 +56,17 @@ def init_db():
     )
     ''')
     
+    # I-DENDEF Telemetry Logs (Vibration arrays)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS telemetry_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TIMESTAMP,
+        station_id TEXT,
+        vibration_data TEXT,
+        is_anomaly BOOLEAN
+    )
+    ''')
+    
     conn.commit()
     
     # Initialize basic stations
