@@ -39,3 +39,8 @@ Every time a major design decision is finalized or a significant change is commi
 - Decided to centralize constraints into a new \core/veto_engine.py\.
 - Decided to refactor SimPy to include inter-station Buffers and \simpy.Container\ for inventory.
 - Updated \plan.md\ to reflect Phase 6/V2 remodel.
+
+**[2026-08-27] - V2 Implementation Phase 1 & 2**
+- Added PyTorch/Torchvision/OpenCV to requirements.txt.
+- Rewrote \core/idendef.py\ into three dedicated models (PyTorch CNN for Vision, Isolation Forest for Vibration, Deterministic Logic for PLC) trained on synthetic data.
+- Created \core/veto_engine.py\ to house the sequential Constraint Verification Logic.
