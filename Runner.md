@@ -98,3 +98,7 @@ Every time a major design decision is finalized or a significant change is commi
 - Replaced the \Tkinter\ Python GUI with a \Flask\ web server (\web_app.py\).
 - Designed a modern HTML/CSS frontend (\	emplates/index.html\) using Tailwind CSS and Chart.js.
 - The web dashboard queries telemetry endpoints to render 60FPS multi-line overlaid vibration charts instantly in the browser, eliminating the Python GUI bottlenecks.
+
+**[2026-08-27] - Global Alerts & Collapsible Sidebar**
+- Added CSS toggles in \index.html\ to allow collapsing/expanding the Station folders in the Treeview without losing graph focus.
+- Rewrote the alerting logic to run globally via the \etchState\ poll. If ANY machine across the 16 nodes triggers an anomaly, its name in the sidebar will instantly turn bold RED, and the top banner will trigger a Global Alarm, regardless of which graph is currently active.
