@@ -32,3 +32,10 @@ Every time a major design decision is finalized or a significant change is commi
 **[2026-08-27] - Added Additional Reference Materials**
 - Copied new files (e.g., Flowchart.png) from local Downloads/AIC into docs/References.
 - Committed and pushed updates to GitHub.
+
+**[2026-08-27] - Architecture V2 Pivot (Flowchart Alignment)**
+- Conducted /grill-me session to align with the new Flowchart.png.
+- Decided to implement real PyTorch/TensorFlow LSTMs for I-DENDEF fatigue prediction.
+- Decided to centralize constraints into a new \core/veto_engine.py\.
+- Decided to refactor SimPy to include inter-station Buffers and \simpy.Container\ for inventory.
+- Updated \plan.md\ to reflect Phase 6/V2 remodel.
