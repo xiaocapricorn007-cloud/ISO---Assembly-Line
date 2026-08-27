@@ -28,3 +28,7 @@ Every time a major design decision is finalized or a significant change is commi
 - Set up SimPy environment in simulation/factory_env.py.
 - Built Streamlit dashboard entry point in pp.py.
 - Added equirements.txt.
+
+**[2026-08-27] - Added Additional Reference Materials**
+- Copied new files (e.g., Flowchart.png) from local Downloads/AIC into docs/References.
+- Committed and pushed updates to GitHub.
