@@ -59,7 +59,7 @@ def train_machine_model(machine_id, base_freq):
         losses = torch.mean((reconstructions - train_data)**2, dim=2) # MSE per sample
         threshold = losses.max().item() * 1.5 # 50% buffer for anomaly threshold
         
-    print(f"✅ Trained {machine_id}. Anomaly Threshold Set: {threshold:.4f}\n")
+    print(f"[OK] Trained {machine_id}. Anomaly Threshold Set: {threshold:.4f}\n")
     
     # 5. Save Model and Threshold
     save_path = os.path.join("models", "pretrained", f"{machine_id}.pth")

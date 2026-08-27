@@ -62,12 +62,12 @@
             <!-- DASHBOARD TAB -->
             <div id="tab-dashboard" class="flex flex-col flex-1">
                 <!-- Chart Area -->
-                <div class="bg-gray-800 p-4 rounded shadow-lg flex-1 min-h-[350px] mb-4">
-                    <h3 class="text-lg font-bold mb-2">Live Telemetry: <span id="current-node" class="text-blue-400">None Selected</span></h3>
-                    <div class="relative h-full w-full">
-                        <canvas id="telemetryChart"></canvas>
-                    </div>
+            <div class="bg-gray-800 p-4 rounded shadow-lg mb-4" style="height: 400px; display: flex; flex-direction: column;">
+                <h3 class="text-lg font-bold mb-2">Live Telemetry: <span id="current-node" class="text-blue-400">None Selected</span></h3>
+                <div class="relative w-full" style="flex: 1; min-height: 0;">
+                    <canvas id="telemetryChart"></canvas>
                 </div>
+            </div>
 
                 <!-- Timelog Area -->
                 <div class="bg-gray-800 p-4 rounded shadow-lg h-48 overflow-y-auto">
