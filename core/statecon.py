@@ -34,11 +34,19 @@ class StateconEngine:
         
     def update_machine_state(self, station_id, status, current_cycle_time):
         cursor = self.conn.cursor()
-        cursor.execute('''
-        UPDATE machines 
-        SET status = ?, current_cycle_time = ?, last_updated = ?
-        WHERE station_id = ?
-        ''', (status, current_cycle_time, datetime.now(), station_id))
+        # Check if exists
+        cursor.execute("SELECT 1 FROM machines WHERE station_id = ?", (station_id,))
+        if cursor.fetchone():
+            cursor.execute('''
+            UPDATE machines 
+            SET status = ?, current_cycle_time = ?, last_updated = ?
+            WHERE station_id = ?
+            ''', (status, current_cycle_time, datetime.now(), station_id))
+        else:
+            cursor.execute('''
+            INSERT INTO machines (station_id, status, current_cycle_time, target_cycle_time, last_updated)
+            VALUES (?, ?, ?, ?, ?)
+            ''', (station_id, status, current_cycle_time, self.global_vars["target_cycle_time"], datetime.now()))
         self.conn.commit()
 
     def process_human_input(self, station_id, human_reported_status):

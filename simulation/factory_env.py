@@ -115,6 +115,13 @@ class FactorySimulation:
             
             status = 'BROKEN' if is_defect else 'RUNNING'
             self.statecon.update_machine_state(machine_id, status, actual_ct)
+            
+            # If broken, simulate repair downtime so the dashboard sees the red state for a while
+            if is_defect:
+                print(f"[{machine_id}] OFFLINE for repair...")
+                yield self.env.timeout(50.0) # 50 simulated seconds of repair
+                self.statecon.update_machine_state(machine_id, 'RUNNING', actual_ct)
+                print(f"[{machine_id}] REPAIRED. Back online.")
 
             # 4. O-PTINECK & Veto Check
             time_flag = self.optineck.check_time_thresholds(machine_id, actual_ct)

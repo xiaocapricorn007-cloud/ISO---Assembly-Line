@@ -102,3 +102,9 @@ Every time a major design decision is finalized or a significant change is commi
 **[2026-08-27] - Global Alerts & Collapsible Sidebar**
 - Added CSS toggles in \index.html\ to allow collapsing/expanding the Station folders in the Treeview without losing graph focus.
 - Rewrote the alerting logic to run globally via the \etchState\ poll. If ANY machine across the 16 nodes triggers an anomaly, its name in the sidebar will instantly turn bold RED, and the top banner will trigger a Global Alarm, regardless of which graph is currently active.
+
+**[2026-08-27] - Repair Mechanic & Dashboard Tabs**
+- Fixed a database upsert bug where granular machines weren't properly registering their states in S-TATECON.
+- Implemented a repair mechanic in the simulation: When an anomaly occurs, the machine goes OFFLINE for 50 simulated seconds (displaying RED), before rectifying itself back to normal (GREEN).
+- Separated the web UI into multiple Tabs (Dashboard and S-TATECON) for a cleaner layout.
+- Added a live Alarm Timelog to the Dashboard to track exactly when and where past anomalies occurred.

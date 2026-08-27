@@ -69,6 +69,18 @@ def get_telemetry():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/alarms')
+def get_alarms():
+    try:
+        conn = get_connection()
+        # Fetch the last 20 anomalies triggered across any machine
+        query = "SELECT timestamp, station_id FROM telemetry_logs WHERE is_anomaly=1 ORDER BY id DESC LIMIT 20"
+        df_alarms = pd.read_sql(query, conn)
+        conn.close()
+        return jsonify(df_alarms.to_dict(orient='records'))
+    except Exception as e:
+        return jsonify([])
+
 if __name__ == '__main__':
     # Disable reloader so it doesn't double-start in masterstart
     app.run(host='127.0.0.1', port=5000, debug=False)
