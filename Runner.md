@@ -78,3 +78,9 @@ Every time a major design decision is finalized or a significant change is commi
 - Created \	rain_vibration.py\ to generate unique datasets per machine and pre-train 16 distinct PyTorch TCN-AutoEncoders.
 - Refactored \idendef.py\ to load pre-trained weights from \models/pretrained/\ instead of training in-memory.
 - Refactored SimPy environment to use \simpy.Resource\ to model parallel machines with independent cycle times and telemetry streams.
+
+**[2026-08-27] - Interactive Multi-Line GUI Dashboard**
+- Redesigned the I-DENDEF tab layout with a \	tk.PanedWindow\.
+- Added an interactive \	tk.Treeview\ sidebar to display the hierarchical 16-machine topology.
+- If a specific Machine is clicked, the Matplotlib canvas dynamically renders only its telemetry.
+- If a parent Station is clicked, the canvas overlays the telemetry of all its child machines concurrently using multi-colored plots.

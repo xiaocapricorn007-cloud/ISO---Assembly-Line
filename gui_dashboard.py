@@ -64,27 +64,59 @@ class IsoDashboard(tk.Tk):
         self.log_text.pack(fill="both", expand=True, padx=20, pady=5)
 
     def setup_idendef_tab(self):
-        # Alert banner
+        # Top Alert banner
         self.alert_var = tk.StringVar()
         self.alert_var.set("I-DENDEF Status: NORMAL")
         self.alert_label = tk.Label(self.tab_idendef, textvariable=self.alert_var, font=("Helvetica", 16, "bold"), bg="#1e1e1e", fg="#00ff00")
-        self.alert_label.pack(pady=10)
+        self.alert_label.pack(pady=5)
         
-        # Matplotlib Figure
-        self.fig, self.ax = plt.subplots(figsize=(8, 4), facecolor='#1e1e1e')
+        # Split layout: Left for Graph, Right for Treeview
+        self.paned = ttk.PanedWindow(self.tab_idendef, orient=tk.HORIZONTAL)
+        self.paned.pack(fill="both", expand=True, padx=10, pady=5)
+        
+        # LEFT: Matplotlib Figure
+        self.graph_frame = tk.Frame(self.paned, bg="#1e1e1e")
+        self.paned.add(self.graph_frame, weight=3)
+        
+        self.fig, self.ax = plt.subplots(figsize=(6, 4), facecolor='#1e1e1e')
         self.ax.set_facecolor('#2b2b2b')
         self.ax.tick_params(colors='white')
-        self.ax.set_title("Live Vibration Telemetry (Time Domain)", color="white")
+        self.ax.set_title("Live Vibration Telemetry", color="white")
         self.ax.set_xlabel("Time Step", color="white")
         self.ax.set_ylabel("Amplitude", color="white")
-        self.line, = self.ax.plot([], [], color="#00ff00", lw=2)
         
-        self.canvas = FigureCanvasTkAgg(self.fig, master=self.tab_idendef)
-        self.canvas.get_tk_widget().pack(fill="both", expand=True, padx=20, pady=10)
+        self.canvas = FigureCanvasTkAgg(self.fig, master=self.graph_frame)
+        self.canvas.get_tk_widget().pack(fill="both", expand=True)
         
-        # Text log for inference details
-        self.idendef_log = tk.Text(self.tab_idendef, height=5, bg="#2b2b2b", fg="white", font=("Consolas", 10))
-        self.idendef_log.pack(fill="x", padx=20, pady=10)
+        self.idendef_log = tk.Text(self.graph_frame, height=4, bg="#2b2b2b", fg="white", font=("Consolas", 9))
+        self.idendef_log.pack(fill="x", pady=5)
+        
+        # RIGHT: Treeview Sidebar
+        self.sidebar_frame = tk.Frame(self.paned, bg="#1e1e1e")
+        self.paned.add(self.sidebar_frame, weight=1)
+        
+        ttk.Label(self.sidebar_frame, text="Select Machine / Station:").pack(anchor="w")
+        
+        self.machine_tree = ttk.Treeview(self.sidebar_frame, show="tree")
+        self.machine_tree.pack(fill="both", expand=True)
+        self.machine_tree.bind("<<TreeviewSelect>>", self.on_tree_select)
+        
+        # Populate Treeview
+        self.topology = {
+            'Station_A': 3, 'Station_B': 2, 'Station_C_Dark': 5,
+            'Station_D': 4, 'Station_E': 2
+        }
+        for station, count in self.topology.items():
+            parent = self.machine_tree.insert("", "end", iid=station, text=station)
+            for i in range(1, count + 1):
+                self.machine_tree.insert(parent, "end", iid=f"{station}_M{i}", text=f"Machine {i}")
+                
+        self.selected_node = None # Can be a Station or a Machine
+
+    def on_tree_select(self, event):
+        selected = self.machine_tree.selection()
+        if selected:
+            self.selected_node = selected[0]
 
     def update_dashboard(self):
         try:
@@ -109,27 +141,50 @@ class IsoDashboard(tk.Tk):
             for _, r in df_phantom.iterrows():
                 self.log_text.insert(tk.END, f"[{r['timestamp']}] VETO: Human '{r['human_input']}' vs PLC '{r['plc_truth']}' -> {r['action_taken']}\n")
                 
-            # --- Update I-DENDEF Tab ---
-            df_telemetry = pd.read_sql("SELECT * FROM telemetry_logs ORDER BY id DESC LIMIT 1", conn)
-            if not df_telemetry.empty:
-                vib_data = json.loads(df_telemetry['vibration_data'].iloc[0])
-                is_anomaly = df_telemetry['is_anomaly'].iloc[0]
-                station = df_telemetry['station_id'].iloc[0]
-                timestamp = df_telemetry['timestamp'].iloc[0]
+            # --- Update I-DENDEF Tab (Graphing) ---
+            if self.selected_node:
+                self.ax.clear()
+                self.ax.set_title(f"Telemetry: {self.selected_node}", color="white")
+                self.ax.set_xlabel("Time Step", color="white")
+                self.ax.set_ylabel("Amplitude", color="white")
                 
-                # Update Plot
-                self.line.set_xdata(range(len(vib_data)))
-                self.line.set_ydata(vib_data)
-                self.ax.relim()
-                self.ax.autoscale_view()
+                # Determine if selected is a Station or Machine
+                if self.selected_node in self.topology: # It's a Station
+                    machines = [f"{self.selected_node}_M{i}" for i in range(1, self.topology[self.selected_node] + 1)]
+                else: # It's a Machine
+                    machines = [self.selected_node]
+                    
+                colors = ['#00ff00', '#00ccff', '#ff00ff', '#ffff00', '#ff9900']
                 
-                if is_anomaly:
-                    self.line.set_color("#ff4c4c")
-                    self.alert_var.set(f"I-DENDEF ALARM! Anomaly detected at {station}")
+                global_anomaly = False
+                
+                for idx, m_id in enumerate(machines):
+                    # Get latest log for this specific machine
+                    query = f"SELECT * FROM telemetry_logs WHERE station_id='{m_id}' ORDER BY id DESC LIMIT 1"
+                    df_tel = pd.read_sql(query, conn)
+                    
+                    if not df_tel.empty:
+                        vib_data = json.loads(df_tel['vibration_data'].iloc[0])
+                        is_anomaly = df_tel['is_anomaly'].iloc[0]
+                        timestamp = df_tel['timestamp'].iloc[0]
+                        
+                        color = "#ff4c4c" if is_anomaly else colors[idx % len(colors)]
+                        self.ax.plot(vib_data, color=color, lw=1.5, label=m_id)
+                        
+                        if is_anomaly:
+                            global_anomaly = True
+                            # Prevent log spam, only insert if not already there
+                            log_msg = f"[{timestamp}] ALARM! TCN Anomaly at {m_id}.\n"
+                            if log_msg not in self.idendef_log.get(1.0, tk.END):
+                                self.idendef_log.insert(1.0, log_msg)
+                                
+                if len(machines) > 1:
+                    self.ax.legend(loc="upper right", fontsize='small')
+                    
+                if global_anomaly:
+                    self.alert_var.set("I-DENDEF ALARM! Anomaly Detected!")
                     self.alert_label.config(fg="#ff4c4c")
-                    self.idendef_log.insert(1.0, f"[{timestamp}] Anomaly triggered at {station}. Sub-line buffer engaged.\n")
                 else:
-                    self.line.set_color("#00ff00")
                     self.alert_var.set("I-DENDEF Status: NORMAL")
                     self.alert_label.config(fg="#00ff00")
                     
@@ -137,9 +192,8 @@ class IsoDashboard(tk.Tk):
                 
             conn.close()
         except Exception as e:
-            pass # Fail silently if DB is locked during read
+            pass # Fail silently if DB is locked
             
-        # Refresh every 1000ms
         self.after(1000, self.update_dashboard)
 
 if __name__ == "__main__":
