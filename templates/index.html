@@ -206,24 +206,41 @@
                     </div>
                 </div>
 
-                <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
-                        S-TATECON Live Machine States
-                    </h3>
-                    <div class="overflow-hidden rounded-lg border border-gray-700/50">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-gray-800 border-b border-gray-700">
-                                <tr>
-                                    <th class="px-4 py-3 font-semibold text-gray-300">Machine ID</th>
-                                    <th class="px-4 py-3 font-semibold text-gray-300">Operational Status</th>
-                                    <th class="px-4 py-3 font-semibold text-gray-300 text-right">Cycle Time (Act / Tgt)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="machines-table" class="divide-y divide-gray-800/50">
-                                <!-- Populated by JS -->
-                            </tbody>
-                        </table>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+                    <!-- S-TATECON Live Machine States -->
+                    <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col">
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                            S-TATECON Live Machine States
+                        </h3>
+                        <div class="overflow-hidden rounded-lg border border-gray-700/50 flex-1">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-gray-800 border-b border-gray-700">
+                                    <tr>
+                                        <th class="px-4 py-3 font-semibold text-gray-300">Machine ID</th>
+                                        <th class="px-4 py-3 font-semibold text-gray-300">Operational Status</th>
+                                        <th class="px-4 py-3 font-semibold text-gray-300 text-right">Cycle Time (Act / Tgt)</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="machines-table" class="divide-y divide-gray-800/50">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Configuration Panel -->
+                    <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                System Configuration
+                            </h3>
+                            <button onclick="saveConfig()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors">Apply Changes</button>
+                        </div>
+                        <div class="overflow-y-auto max-h-[300px] pr-2 custom-scrollbar flex-1" id="config-container">
+                            <!-- Populated by JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -641,6 +658,63 @@
             } catch (e) {}
         }
 
+        async function fetchConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                
+                let html = '';
+                const labels = {
+                    'global': 'Global Shift Parameters',
+                    'station': 'Station Cycle Times (s)',
+                    'buffer': 'Buffer Capacities (Units)'
+                };
+                
+                for (const group in data) {
+                    html += `<div class="mb-4">
+                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b border-gray-700/50 pb-1">${labels[group]}</h4>
+                        <div class="grid grid-cols-2 gap-3">`;
+                    
+                    for (const key in data[group]) {
+                        html += `
+                            <div class="flex flex-col bg-gray-800/50 p-2 rounded border border-gray-700/50">
+                                <label class="text-[10px] text-gray-400 font-mono mb-1 truncate" title="${key}">${key}</label>
+                                <input type="number" step="0.1" id="cfg_${key}" data-key="${key}" value="${data[group][key]}" class="bg-gray-900 border border-gray-600 text-gray-200 text-sm rounded px-2 py-1 outline-none focus:border-blue-500 w-full font-mono config-input">
+                            </div>
+                        `;
+                    }
+                    html += `</div></div>`;
+                }
+                
+                document.getElementById('config-container').innerHTML = html;
+            } catch (e) {}
+        }
+
+        async function saveConfig() {
+            const inputs = document.querySelectorAll('.config-input');
+            const payload = {};
+            inputs.forEach(inp => {
+                payload[inp.getAttribute('data-key')] = inp.value;
+            });
+            
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                // Flashing success feedback
+                const btn = document.querySelector('button[onclick="saveConfig()"]');
+                const origText = btn.innerText;
+                btn.innerText = "Saved!";
+                btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+                setTimeout(() => {
+                    btn.innerText = origText;
+                    btn.classList.replace('bg-emerald-600', 'bg-blue-600');
+                }, 1500);
+            } catch (e) {}
+        }
+
         initChart();
         
         // Wait 3 seconds to let backend stabilize and clear ghost rows
@@ -650,6 +724,7 @@
             
             fetchState();
             fetchInventory();
+            fetchConfig();
             startFakeFlowAnimation();
             fetchTelemetry();
             setInterval(() => {

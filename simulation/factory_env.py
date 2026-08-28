@@ -238,9 +238,11 @@ class FactorySimulation:
 def part_generator(env, sim):
     """Generates new parts entering the factory continuously based on Takt Time."""
     part_count = 0
-    takt_time = sim.statecon.get_global_var("takt_time_TT")
-    scaled_takt = takt_time / 15.0
     while True:
+        sim.statecon.refresh_config()
+        takt_time = sim.statecon.get_global_var("takt_time_TT")
+        scaled_takt = takt_time / 15.0
+        
         part_count += 1
         part_id = f"Part_{part_count}"
         env.process(sim.process_part(part_id))

@@ -73,6 +73,28 @@ def get_inventory():
     except Exception as e:
         return jsonify({})
 
+@app.route('/api/config', methods=['GET', 'POST'])
+def config_manager():
+    try:
+        conn = get_connection()
+        if request.method == 'POST':
+            data = request.json
+            cursor = conn.cursor()
+            for key, val in data.items():
+                cursor.execute("UPDATE system_config SET value=? WHERE key=?", (float(val), key))
+            conn.commit()
+            conn.close()
+            return jsonify({"status": "success"})
+        else:
+            df = pd.read_sql("SELECT config_group, key, value FROM system_config", conn)
+            conn.close()
+            config_dict = {"global": {}, "station": {}, "buffer": {}}
+            for _, row in df.iterrows():
+                config_dict[row['config_group']][row['key']] = row['value']
+            return jsonify(config_dict)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/telemetry')
 def get_telemetry():
     node = request.args.get('node', '')

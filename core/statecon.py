@@ -66,7 +66,28 @@ class StateconEngine:
             VALUES (?, ?, ?)
             ON CONFLICT(station_id) DO UPDATE SET on_hand=excluded.on_hand
             ''', (station_id, inv["part_id"], inv["on_hand"]))
+            
+        # Sync Initial Config to DB
+        for k, v in self.global_vars.items():
+            cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('global', k, v))
+        for k, v in self.station_cycle_times.items():
+            cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('station', k, v))
+        for k, v in self.buffer_capacities.items():
+            cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('buffer', k, v))
         self.conn.commit()
+
+    def refresh_config(self):
+        """Pulls dynamic overrides from DB (set by Web Dashboard)."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT config_group, key, value FROM system_config")
+        rows = cursor.fetchall()
+        for cg, k, v in rows:
+            if cg == 'global':
+                self.global_vars[k] = v
+            elif cg == 'station':
+                self.station_cycle_times[k] = v
+            elif cg == 'buffer':
+                self.buffer_capacities[k] = int(v)
 
     def get_global_var(self, key):
         """Allows I-DENDEF and O-PTINECK to retrieve parameters."""

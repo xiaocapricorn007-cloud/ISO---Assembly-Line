@@ -99,6 +99,16 @@ def init_db():
     )
     ''')
     
+    # Dynamic Configuration Overrides
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS system_config (
+        config_group TEXT,
+        key TEXT,
+        value REAL,
+        PRIMARY KEY (config_group, key)
+    )
+    ''')
+    
     # ML Evaluation Tracker
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS ml_eval_logs (
@@ -122,6 +132,7 @@ def init_db():
     cursor.execute('DELETE FROM ml_eval_logs')
     cursor.execute('DELETE FROM parts')
     cursor.execute('DELETE FROM inventory')
+    cursor.execute('DELETE FROM system_config')
     conn.commit()
     
     conn.close()
