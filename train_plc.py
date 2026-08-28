@@ -99,7 +99,7 @@ def main():
             base_L2 += 2.0
             seq_len += 20 # Must remain multiple of 4
             
-    print("🎉 All 16 PLC models successfully pretrained and saved to models/pretrained_plc/")
+    print("All 16 PLC models successfully pretrained and saved to models/pretrained_plc/")
 
 if __name__ == "__main__":
     main()
