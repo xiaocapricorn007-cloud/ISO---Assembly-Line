@@ -344,6 +344,15 @@
 
                 const alarmRes = await fetch('/api/alarms');
                 const alarmData = await alarmRes.json();
+                
+                if (alarmData.length > 0) {
+                    const latestAlarmTime = alarmData[0].timestamp;
+                    if (window.lastAlarmTime && window.lastAlarmTime !== latestAlarmTime) {
+                        playAlarmSound();
+                    }
+                    window.lastAlarmTime = latestAlarmTime;
+                }
+
                 let logHtml = '';
                 alarmData.forEach(a => {
                     logHtml += `
@@ -357,6 +366,30 @@
                 document.getElementById('timelog-list').innerHTML = logHtml;
 
             } catch (e) {}
+        }
+
+        function playAlarmSound() {
+            try {
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                // Start with a high pitch and quickly drop it for an "alert" sound effect
+                oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); 
+                oscillator.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.3);
+                
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime); 
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                oscillator.start();
+                oscillator.stop(audioCtx.currentTime + 0.3);
+            } catch (e) {
+                console.log("Audio requires user interaction first.", e);
+            }
         }
 
         async function fetchTelemetry() {
