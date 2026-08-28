@@ -111,5 +111,9 @@ Every time a major design decision is finalized or a significant change is commi
 
 **[2026-08-27] - DB Wipe & Startup Stabilizer**
 - Cleared a massive logic bug where old ghost records (from previous test runs) in SQLite were permanently triggering the UI dashboard alarm.
-- Updated \db.py\ to forcefully TRUNCATE/DELETE all telemetry, metric, and machine state tables upon a fresh \masterstart\ boot.
+- Updated `db.py` to forcefully TRUNCATE/DELETE all telemetry, metric, and machine state tables upon a fresh `masterstart` boot.
 - Implemented a 3-second 'Initializing Digital Twin' splash overlay on the frontend web dashboard to pause polling, allowing the backend to fully stabilize its data streams before rendering.
+
+**[2026-08-28] - Documentation Update for V2 Architecture**
+- Updated `README.md` to fully reflect the V2 remodel based on `Runner.md` and `plan.md`.
+- Reflected the shift to a PyTorch TCN 16-machine granular architecture for I-DENDEF, the addition of the centralized Veto Engine, and the new Flask + Chart.js web dashboard.
