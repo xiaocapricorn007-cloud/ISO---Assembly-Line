@@ -80,6 +80,16 @@ def init_db():
     )
     ''')
     
+    # Parts Tracking (Inventory)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS parts (
+        part_id TEXT PRIMARY KEY,
+        current_location TEXT,
+        status TEXT,
+        last_updated TIMESTAMP
+    )
+    ''')
+    
     # ML Evaluation Tracker
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS ml_eval_logs (
@@ -101,6 +111,7 @@ def init_db():
     cursor.execute('DELETE FROM metrics')
     cursor.execute('DELETE FROM phantom_logs')
     cursor.execute('DELETE FROM ml_eval_logs')
+    cursor.execute('DELETE FROM parts')
     conn.commit()
     
     conn.close()

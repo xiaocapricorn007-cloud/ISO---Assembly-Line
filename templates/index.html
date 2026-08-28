@@ -152,8 +152,72 @@
             </div>
 
             <!-- S-TATECON TAB (Hidden by default) -->
-            <div id="tab-statecon" class="hidden flex-col flex-1">
-                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow-lg">
+            <div id="tab-statecon" class="hidden flex-col flex-1 gap-5">
+                
+                <!-- Visual Assembly Flowchart -->
+                <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-8 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Assembly Line Flow
+                    </h3>
+                    <div class="relative w-full h-24 flex items-center justify-between px-10">
+                        <!-- Connecting Line -->
+                        <div class="absolute left-16 right-16 h-1 bg-gray-800 top-1/2 -translate-y-1/2 z-0 rounded-full"></div>
+                        
+                        <!-- Stations -->
+                        <div class="relative z-10 flex flex-col items-center" id="flow-Station_A">
+                            <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_A">A</div>
+                            <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Chassis</span>
+                            <div id="badge-Station_A" class="absolute -top-2 -right-2 hidden"><div class="w-3.5 h-3.5 bg-blue-500 rounded-full animate-ping absolute opacity-75"></div><div class="w-3.5 h-3.5 bg-blue-400 rounded-full relative border border-white/20"></div></div>
+                        </div>
+                        
+                        <!-- Buffer A-B -->
+                        <div class="relative z-10 -mt-5" id="flow-Buffer_A_B">
+                            <div id="badge-Buffer_A_B" class="w-3 h-3 bg-blue-400 rounded-full hidden shadow-[0_0_10px_rgba(59,130,246,0.8)] border border-white/20"></div>
+                        </div>
+
+                        <div class="relative z-10 flex flex-col items-center" id="flow-Station_B">
+                            <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_B">B</div>
+                            <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Powertrain</span>
+                            <div id="badge-Station_B" class="absolute -top-2 -right-2 hidden"><div class="w-3.5 h-3.5 bg-blue-500 rounded-full animate-ping absolute opacity-75"></div><div class="w-3.5 h-3.5 bg-blue-400 rounded-full relative border border-white/20"></div></div>
+                        </div>
+                        
+                        <!-- Buffer B-C -->
+                        <div class="relative z-10 -mt-5" id="flow-Buffer_B_C">
+                            <div id="badge-Buffer_B_C" class="w-3 h-3 bg-blue-400 rounded-full hidden shadow-[0_0_10px_rgba(59,130,246,0.8)] border border-white/20"></div>
+                        </div>
+                        
+                        <div class="relative z-10 flex flex-col items-center" id="flow-Station_C_Dark">
+                            <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_C_Dark">C</div>
+                            <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Body/Welding</span>
+                            <div id="badge-Station_C_Dark" class="absolute -top-2 -right-2 hidden"><div class="w-3.5 h-3.5 bg-blue-500 rounded-full animate-ping absolute opacity-75"></div><div class="w-3.5 h-3.5 bg-blue-400 rounded-full relative border border-white/20"></div></div>
+                        </div>
+
+                        <!-- Buffer C-D -->
+                        <div class="relative z-10 -mt-5" id="flow-Buffer_C_D">
+                            <div id="badge-Buffer_C_D" class="w-3 h-3 bg-blue-400 rounded-full hidden shadow-[0_0_10px_rgba(59,130,246,0.8)] border border-white/20"></div>
+                        </div>
+
+                        <div class="relative z-10 flex flex-col items-center" id="flow-Station_D">
+                            <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_D">D</div>
+                            <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Painting</span>
+                            <div id="badge-Station_D" class="absolute -top-2 -right-2 hidden"><div class="w-3.5 h-3.5 bg-blue-500 rounded-full animate-ping absolute opacity-75"></div><div class="w-3.5 h-3.5 bg-blue-400 rounded-full relative border border-white/20"></div></div>
+                        </div>
+                        
+                        <!-- Buffer D-E -->
+                        <div class="relative z-10 -mt-5" id="flow-Buffer_D_E">
+                            <div id="badge-Buffer_D_E" class="w-3 h-3 bg-blue-400 rounded-full hidden shadow-[0_0_10px_rgba(59,130,246,0.8)] border border-white/20"></div>
+                        </div>
+                        
+                        <div class="relative z-10 flex flex-col items-center" id="flow-Station_E">
+                            <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_E">E</div>
+                            <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Final Assembly</span>
+                            <div id="badge-Station_E" class="absolute -top-2 -right-2 hidden"><div class="w-3.5 h-3.5 bg-blue-500 rounded-full animate-ping absolute opacity-75"></div><div class="w-3.5 h-3.5 bg-blue-400 rounded-full relative border border-white/20"></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg">
                     <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
                         S-TATECON Live Machine States
@@ -333,6 +397,32 @@
                 } else {
                     banner.innerHTML = `<span class="px-3 py-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-md font-bold text-xs tracking-wider flex items-center gap-1.5"><div class="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>SYSTEM NORMAL</span>`;
                 }
+
+                // Update Flowchart
+                document.querySelectorAll('[id^="badge-"]').forEach(el => el.classList.add('hidden'));
+                document.querySelectorAll('[id^="box-"]').forEach(el => {
+                    el.classList.remove('border-blue-500', 'bg-blue-900/20', 'text-blue-400');
+                    el.classList.add('border-gray-700', 'bg-gray-800', 'text-gray-300');
+                });
+                
+                const partsRes = await fetch('/api/parts');
+                const partsData = await partsRes.json();
+                
+                partsData.forEach(p => {
+                    const loc = p.current_location;
+                    // If it's a specific machine (e.g., Station_A_M1), map it to the parent station
+                    const stationMatch = loc.match(/(Station_[A-E](?:_Dark)?)/);
+                    const targetLoc = stationMatch ? stationMatch[1] : loc;
+                    
+                    const badge = document.getElementById('badge-' + targetLoc);
+                    const box = document.getElementById('box-' + targetLoc);
+                    
+                    if (badge) badge.classList.remove('hidden');
+                    if (box) {
+                        box.classList.remove('border-gray-700', 'bg-gray-800', 'text-gray-300');
+                        box.classList.add('border-blue-500', 'bg-blue-900/20', 'text-blue-400');
+                    }
+                });
 
                 const alarmRes = await fetch('/api/alarms');
                 const alarmData = await alarmRes.json();

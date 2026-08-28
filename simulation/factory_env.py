@@ -39,6 +39,16 @@ class FactorySimulation:
             'Buffer_D_E': simpy.Store(env, capacity=10)
         }
 
+    def update_part_location(self, part_id, location, status="In Progress"):
+        cursor = self.statecon.conn.cursor()
+        curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
+        cursor.execute('''
+        INSERT INTO parts (part_id, current_location, status, last_updated)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(part_id) DO UPDATE SET current_location=excluded.current_location, status=excluded.status, last_updated=excluded.last_updated
+        ''', (part_id, location, status, curr_time))
+        self.statecon.conn.commit()
+
     def generate_synthetic_telemetry(self, machine_id, anomaly_type):
         # 1. Vibration
         vib_model = self.idendef.vibration_model
@@ -91,16 +101,27 @@ class FactorySimulation:
 
     def process_part(self, part_id):
         """A single part flows through all stations."""
+        self.update_part_location(part_id, 'Buffer_Raw')
+        
         # --- STATION A ---
         yield self.env.process(self.run_machine_cycle('Station_A', part_id, self.raw_inventory, self.buffers['Buffer_A_B']))
+        self.update_part_location(part_id, 'Buffer_A_B')
+        
         # --- STATION B ---
         yield self.env.process(self.run_machine_cycle('Station_B', part_id, self.buffers['Buffer_A_B'], self.buffers['Buffer_B_C']))
+        self.update_part_location(part_id, 'Buffer_B_C')
+        
         # --- STATION C ---
         yield self.env.process(self.run_machine_cycle('Station_C_Dark', part_id, self.buffers['Buffer_B_C'], self.buffers['Buffer_C_D']))
+        self.update_part_location(part_id, 'Buffer_C_D')
+        
         # --- STATION D ---
         yield self.env.process(self.run_machine_cycle('Station_D', part_id, self.buffers['Buffer_C_D'], self.buffers['Buffer_D_E']))
+        self.update_part_location(part_id, 'Buffer_D_E')
+        
         # --- STATION E ---
         yield self.env.process(self.run_machine_cycle('Station_E', part_id, self.buffers['Buffer_D_E'], None))
+        self.update_part_location(part_id, 'Completed', status="Finished")
 
     def run_machine_cycle(self, station_id, part_id, upstream, downstream):
         """Requests a machine in the station, processes, and pushes to downstream."""
@@ -117,6 +138,9 @@ class FactorySimulation:
             
             machine_num = random.randint(1, MACHINE_TOPOLOGY[station_id])
             machine_id = f"{station_id}_M{machine_num}"
+            
+            # Record that the part is now actively inside this station
+            self.update_part_location(part_id, station_id)
             
             # Simulate Work
             target_ct = self.statecon.get_global_var("target_cycle_time")
@@ -205,6 +229,8 @@ def part_generator(env, sim):
 def start_simulation():
     env = simpy.Environment()
     sim = FactorySimulation(env)
+    
+    sim.statecon.set_global_var("target_cycle_time", 4.0)
     
     # Start the continuous flow of parts
     env.process(part_generator(env, sim))

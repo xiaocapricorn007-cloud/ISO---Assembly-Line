@@ -44,6 +44,17 @@ def get_state():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/parts')
+def get_parts():
+    try:
+        conn = get_connection()
+        query = "SELECT part_id, current_location, status FROM parts WHERE current_location != 'Completed' AND current_location != 'Buffer_Raw'"
+        df_parts = pd.read_sql(query, conn)
+        conn.close()
+        return jsonify(df_parts.to_dict(orient='records'))
+    except Exception as e:
+        return jsonify([])
+
 @app.route('/api/telemetry')
 def get_telemetry():
     node = request.args.get('node', '')
