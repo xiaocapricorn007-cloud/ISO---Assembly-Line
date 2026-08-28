@@ -11,27 +11,47 @@
     <style>
         .hidden-ul { display: none; }
         .alert-red { color: #ef4444 !important; font-weight: bold; }
+        
+        /* Custom scrollbar for a cleaner look */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
     </style>
 </head>
-<body class="bg-gray-900 text-white font-sans antialiased h-screen flex flex-col relative">
+<body class="bg-[#0f172a] text-gray-200 font-sans antialiased h-screen flex flex-col relative overflow-hidden">
 
     <!-- Stabilizing Overlay -->
-    <div id="startup-overlay" class="absolute inset-0 bg-gray-900 z-50 flex flex-col items-center justify-center">
-        <div class="text-3xl font-bold text-blue-400 mb-4 animate-pulse">Initializing Digital Twin...</div>
-        <div class="text-xl text-gray-400">Stabilizing S-TATECON & I-DENDEF Telemetry Links</div>
-        <div class="mt-8 border-t-4 border-blue-500 w-48 rounded animate-bounce"></div>
+    <div id="startup-overlay" class="absolute inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+        <div class="text-3xl font-bold text-blue-400 mb-4 animate-pulse tracking-wide">Initializing Digital Twin...</div>
+        <div class="text-lg text-gray-400">Stabilizing S-TATECON & I-DENDEF Telemetry Links</div>
+        <div class="mt-8 border-t-4 border-blue-500 w-48 rounded animate-bounce shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
     </div>
 
     <!-- Header -->
-    <header class="bg-gray-800 p-4 shadow-md flex justify-between items-center">
-        <h1 class="text-2xl font-bold text-blue-400">ISO Digital Twin (V2)</h1>
-        <div class="flex gap-4">
-            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-4 py-2 bg-blue-600 rounded font-bold hover:bg-blue-500">Dashboard</button>
-            <button onclick="switchTab('statecon')" id="tab-btn-statecon" class="px-4 py-2 bg-gray-700 rounded font-bold hover:bg-gray-600">S-TATECON</button>
+    <header class="bg-gray-900 border-b border-gray-800 p-4 flex justify-between items-center shadow-lg z-10">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-full bg-blue-600/20 border border-blue-500/50 flex items-center justify-center">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </div>
+            <h1 class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-300 tracking-tight">ISO Digital Twin</h1>
         </div>
-        <div class="flex gap-8">
-            <div class="text-xl">DEY: <span id="dey-val" class="font-bold text-green-400">--</span></div>
-            <div class="text-xl">Bottleneck: <span id="btl-val" class="font-bold text-red-400">--</span></div>
+        
+        <div class="flex gap-2 bg-gray-800 p-1 rounded-lg border border-gray-700">
+            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm">Dashboard</button>
+            <button onclick="switchTab('statecon')" id="tab-btn-statecon" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">S-TATECON</button>
+        </div>
+        
+        <div class="flex gap-6 items-center">
+            <div class="flex flex-col items-end">
+                <span class="text-xs text-gray-500 font-bold uppercase tracking-widest">Equilibrium Yield</span>
+                <span id="dey-val" class="font-bold text-xl text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.4)]">--</span>
+            </div>
+            <div class="h-8 w-px bg-gray-700"></div>
+            <div class="flex flex-col items-end">
+                <span class="text-xs text-gray-500 font-bold uppercase tracking-widest">Bottleneck</span>
+                <span id="btl-val" class="font-bold text-xl text-rose-400">--</span>
+            </div>
         </div>
     </header>
 
@@ -39,68 +59,121 @@
     <div class="flex flex-1 overflow-hidden">
         
         <!-- Sidebar Treeview -->
-        <div class="w-64 bg-gray-800 border-r border-gray-700 p-4 overflow-y-auto">
-            <h2 class="text-lg font-bold mb-4 text-gray-300">Topology</h2>
-            <ul class="space-y-2">
-                {% for station, count in topology.items() %}
-                <li>
-                    <div class="flex items-center gap-2">
-                        <span class="cursor-pointer text-gray-400 hover:text-white" onclick="toggleFolder('ul-{{ station }}')">▼</span>
-                        <span id="nav-{{ station }}" class="cursor-pointer font-bold text-blue-300 hover:text-blue-100" onclick="selectNode('{{ station }}')">{{ station }}</span>
-                    </div>
-                    <ul id="ul-{{ station }}" class="pl-6 mt-1 space-y-1">
-                        {% for i in range(1, count + 1) %}
-                        <li id="nav-{{ station }}_M{{ i }}" class="cursor-pointer text-sm text-gray-400 hover:text-white" onclick="selectNode('{{ station }}_M{{ i }}')">↳ {{ station }}_M{{ i }}</li>
-                        {% endfor %}
-                    </ul>
-                </li>
-                {% endfor %}
-            </ul>
+        <div class="w-72 bg-gray-900 border-r border-gray-800 flex flex-col shadow-xl z-0">
+            <div class="p-4 border-b border-gray-800">
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    Factory Topology
+                </h2>
+            </div>
+            <div class="p-4 overflow-y-auto flex-1">
+                <ul class="space-y-3">
+                    {% for station, count in topology.items() %}
+                    <li>
+                        <div class="flex items-center justify-between group">
+                            <div class="flex items-center gap-2 cursor-pointer w-full" onclick="toggleFolder('ul-{{ station }}')">
+                                <svg class="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                                <span id="nav-{{ station }}" class="font-semibold text-gray-300 group-hover:text-white" onclick="event.stopPropagation(); selectNode('{{ station }}')">{{ station }}</span>
+                            </div>
+                        </div>
+                        <ul id="ul-{{ station }}" class="pl-7 mt-2 space-y-1 relative before:absolute before:left-2.5 before:top-0 before:bottom-0 before:w-px before:bg-gray-700">
+                            {% for i in range(1, count + 1) %}
+                            <li class="relative group">
+                                <div class="absolute left-[-17px] top-1/2 w-4 h-px bg-gray-700"></div>
+                                <div id="nav-{{ station }}_M{{ i }}" class="cursor-pointer text-sm py-1.5 px-3 rounded-md text-gray-400 hover:text-white hover:bg-gray-800 transition-colors flex items-center justify-between" onclick="selectNode('{{ station }}_M{{ i }}')">
+                                    <span>Machine {{ i }}</span>
+                                    <div class="w-2 h-2 rounded-full bg-emerald-500 opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
         </div>
 
         <!-- Right Content Area -->
-        <div class="flex-1 flex flex-col p-6 overflow-y-auto relative">
+        <div class="flex-1 flex flex-col p-6 bg-[#0f172a] overflow-y-auto">
             
             <!-- Global Active Alarms Banner -->
-            <div id="global-alert-banner" class="w-full p-3 rounded mb-4 text-center text-xl font-bold bg-gray-800 text-green-400 border border-green-500">
+            <div id="global-alert-banner" class="w-full p-4 rounded-xl mb-6 flex items-center justify-center gap-3 text-lg font-bold bg-gray-900 border border-gray-700 text-emerald-400 transition-all duration-300 shadow-sm">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 Global Status: NORMAL
             </div>
 
             <!-- DASHBOARD TAB -->
-            <div id="tab-dashboard" class="flex flex-col flex-1">
-                <!-- Chart Area -->
-            <div class="bg-gray-800 p-4 rounded shadow-lg mb-4" style="height: 400px; display: flex; flex-direction: column;">
-                <h3 class="text-lg font-bold mb-2">Live Telemetry: <span id="current-node" class="text-blue-400">None Selected</span></h3>
-                <div class="relative w-full" style="flex: 1; min-height: 0;">
-                    <canvas id="telemetryChart"></canvas>
+            <div id="tab-dashboard" class="flex flex-col flex-1 gap-6">
+                
+                <!-- Charts Row (Side by Side) -->
+                <div class="flex flex-row gap-6 flex-1 min-h-[350px]">
+                    <!-- Chart Area: Vibration -->
+                    <div class="bg-gray-900 p-5 rounded-xl flex-1 flex flex-col border border-gray-800 relative overflow-hidden shadow-lg">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex justify-between items-center">
+                            <span>Vibration Telemetry</span>
+                            <span id="current-node" class="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded text-xs">None</span>
+                        </h3>
+                        <div class="relative w-full flex-1">
+                            <canvas id="telemetryChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart Area: PLC -->
+                    <div class="bg-gray-900 p-5 rounded-xl flex-1 flex flex-col border border-gray-800 relative overflow-hidden shadow-lg">
+                        <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex justify-between items-center">
+                            <span>PLC 3D Coordinates</span>
+                            <span id="current-node-plc" class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded text-xs">None</span>
+                        </h3>
+                        <div class="relative w-full flex-1">
+                            <canvas id="plcChart"></canvas>
+                        </div>
+                    </div>
                 </div>
-            </div>
 
                 <!-- Timelog Area -->
-                <div class="bg-gray-800 p-4 rounded shadow-lg h-48 overflow-y-auto">
-                    <h3 class="text-lg font-bold mb-2 text-red-400">Alarm Timelog</h3>
-                    <ul id="timelog-list" class="space-y-1 text-sm font-mono text-gray-300">
-                        <!-- Populated by JS -->
-                    </ul>
+                <div class="bg-gray-900 p-5 rounded-xl h-56 overflow-hidden border border-gray-800 relative flex flex-col shadow-lg">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 to-orange-500"></div>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-rose-400 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                            Alarm Event Log
+                        </h3>
+                        <div class="flex items-center gap-2">
+                            <div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>
+                            <span class="text-xs text-gray-500 font-mono uppercase tracking-wider">Live Feed</span>
+                        </div>
+                    </div>
+                    <div class="flex-1 overflow-y-auto pr-2">
+                        <ul id="timelog-list" class="space-y-2 text-sm font-mono text-gray-300">
+                            <!-- Populated by JS -->
+                        </ul>
+                    </div>
                 </div>
             </div>
 
             <!-- S-TATECON TAB (Hidden by default) -->
             <div id="tab-statecon" class="hidden flex-col flex-1">
-                <div class="bg-gray-800 p-4 rounded shadow-lg">
-                    <h3 class="text-lg font-bold mb-4">S-TATECON Live Machine States</h3>
-                    <table class="w-full text-left text-sm">
-                        <thead>
-                            <tr class="text-gray-400 border-b border-gray-700">
-                                <th class="pb-2">Machine ID</th>
-                                <th class="pb-2">Status</th>
-                                <th class="pb-2">Cycle Time (s)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="machines-table">
-                            <!-- Populated by JS -->
-                        </tbody>
-                    </table>
+                <div class="bg-gray-900 p-6 rounded-xl border border-gray-800 shadow-lg">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                        S-TATECON Live Machine States
+                    </h3>
+                    <div class="overflow-hidden rounded-lg border border-gray-700/50">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-800 border-b border-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3 font-semibold text-gray-300">Machine ID</th>
+                                    <th class="px-4 py-3 font-semibold text-gray-300">Operational Status</th>
+                                    <th class="px-4 py-3 font-semibold text-gray-300 text-right">Cycle Time (Act / Tgt)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="machines-table" class="divide-y divide-gray-800/50">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
             
@@ -111,8 +184,9 @@
     <script>
         let currentNode = null;
         let chartInstance = null;
+        let plcChartInstance = null;
         const ctx = document.getElementById('telemetryChart').getContext('2d');
-        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
+        const plcCtx = document.getElementById('plcChart').getContext('2d');
 
         function switchTab(tab) {
             if (tab === 'dashboard') {
@@ -121,48 +195,63 @@
                 document.getElementById('tab-statecon').classList.add('hidden');
                 document.getElementById('tab-statecon').classList.remove('flex');
                 
-                document.getElementById('tab-btn-dashboard').className = "px-4 py-2 bg-blue-600 rounded font-bold hover:bg-blue-500";
-                document.getElementById('tab-btn-statecon').className = "px-4 py-2 bg-gray-700 rounded font-bold hover:bg-gray-600";
+                document.getElementById('tab-btn-dashboard').className = "px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm";
+                document.getElementById('tab-btn-statecon').className = "px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700";
             } else {
                 document.getElementById('tab-statecon').classList.remove('hidden');
                 document.getElementById('tab-statecon').classList.add('flex');
                 document.getElementById('tab-dashboard').classList.add('hidden');
                 document.getElementById('tab-dashboard').classList.remove('flex');
                 
-                document.getElementById('tab-btn-statecon').className = "px-4 py-2 bg-blue-600 rounded font-bold hover:bg-blue-500";
-                document.getElementById('tab-btn-dashboard').className = "px-4 py-2 bg-gray-700 rounded font-bold hover:bg-gray-600";
+                document.getElementById('tab-btn-statecon').className = "px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm";
+                document.getElementById('tab-btn-dashboard').className = "px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700";
             }
         }
 
         function initChart() {
+            const chartOptions = {
+                responsive: true, maintainAspectRatio: false, animation: { duration: 0 },
+                elements: { point: { radius: 0 }, line: { borderWidth: 2, tension: 0.1 } },
+                scales: {
+                    x: { display: false },
+                    y: { 
+                        grid: { color: 'rgba(55, 65, 81, 0.4)', drawBorder: false }, 
+                        ticks: { color: '#6b7280', font: { family: 'ui-monospace' } } 
+                    }
+                },
+                plugins: { legend: { labels: { color: '#9ca3af', boxWidth: 12, usePointStyle: true } } },
+                interaction: { intersect: false, mode: 'index' }
+            };
+
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: { labels: Array.from({length: 500}, (_, i) => i), datasets: [] },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false,
-                    elements: { point: { radius: 0 }, line: { borderWidth: 2 } },
-                    scales: {
-                        x: { display: false },
-                        y: { 
-                            grid: { color: '#374151' },
-                            ticks: { color: '#9ca3af' }
-                        }
-                    },
-                    plugins: { legend: { labels: { color: '#ffffff' } } }
-                }
+                options: chartOptions
+            });
+
+            plcChartInstance = new Chart(plcCtx, {
+                type: 'line',
+                data: { labels: Array.from({length: 500}, (_, i) => i), datasets: [] },
+                options: chartOptions
             });
         }
 
         function toggleFolder(ulId) {
             const ul = document.getElementById(ulId);
             ul.classList.toggle('hidden-ul');
+            // Toggle rotation of SVG arrow
+            const svg = ul.previousElementSibling.querySelector('svg');
+            if(ul.classList.contains('hidden-ul')) {
+                svg.style.transform = 'rotate(0deg)';
+            } else {
+                svg.style.transform = 'rotate(90deg)';
+            }
         }
 
         function selectNode(nodeId) {
             currentNode = nodeId;
             document.getElementById('current-node').innerText = nodeId;
+            document.getElementById('current-node-plc').innerText = nodeId;
             fetchTelemetry();
         }
 
@@ -171,7 +260,7 @@
                 const res = await fetch('/api/state');
                 const data = await res.json();
                 
-                document.getElementById('dey-val').innerText = data.dey.toFixed(2) + ' units/hr';
+                document.getElementById('dey-val').innerText = data.dey.toFixed(2);
                 document.getElementById('btl-val').innerText = data.bottleneck;
 
                 let tableHtml = '';
@@ -179,13 +268,19 @@
 
                 data.machines.forEach(m => {
                     const isBroken = m.status === 'BROKEN';
-                    const statusColor = isBroken ? 'text-red-400' : 'text-green-400';
+                    const statusColor = isBroken ? 'text-rose-400 font-bold' : 'text-emerald-400 font-semibold';
+                    const bgPulse = isBroken ? 'bg-rose-500/10' : 'hover:bg-gray-800/30';
                     
                     tableHtml += `
-                        <tr class="border-b border-gray-700/50">
-                            <td class="py-2">${m.station_id}</td>
-                            <td class="py-2 font-bold ${statusColor}">${m.status}</td>
-                            <td class="py-2">${m.current_cycle_time.toFixed(1)} / ${m.target_cycle_time.toFixed(1)}</td>
+                        <tr class="transition-colors ${bgPulse}">
+                            <td class="px-4 py-3 text-gray-300 font-mono text-sm">${m.station_id}</td>
+                            <td class="px-4 py-3 ${statusColor} text-sm flex items-center gap-2">
+                                <div class="w-2 h-2 rounded-full ${isBroken ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}"></div>
+                                ${m.status}
+                            </td>
+                            <td class="px-4 py-3 text-right text-gray-400 font-mono text-sm">
+                                <span class="${isBroken ? 'text-rose-300' : 'text-gray-200'}">${m.current_cycle_time.toFixed(1)}s</span> / ${m.target_cycle_time.toFixed(1)}s
+                            </td>
                         </tr>
                     `;
 
@@ -193,9 +288,13 @@
                     if (navEl) {
                         if (isBroken) {
                             navEl.classList.add('alert-red');
+                            navEl.nextElementSibling.classList.replace('bg-emerald-500', 'bg-rose-500');
                             activeAlarms.push(m.station_id);
                         } else {
                             navEl.classList.remove('alert-red');
+                            if(navEl.nextElementSibling) {
+                                navEl.nextElementSibling.classList.replace('bg-rose-500', 'bg-emerald-500');
+                            }
                         }
                     }
                 });
@@ -203,19 +302,23 @@
 
                 const banner = document.getElementById('global-alert-banner');
                 if (activeAlarms.length > 0) {
-                    banner.className = "w-full p-3 rounded mb-4 text-center text-xl font-bold bg-red-900/50 text-red-400 border border-red-500";
-                    banner.innerText = `GLOBAL ALARM! Anomalies detected in: ${activeAlarms.join(', ')}`;
+                    banner.className = "w-full p-4 rounded-xl mb-6 flex items-center justify-center gap-3 text-lg font-bold bg-rose-900/40 border border-rose-500/50 text-rose-400 transition-all duration-300 shadow-[0_0_15px_rgba(225,29,72,0.2)]";
+                    banner.innerHTML = `<svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> GLOBAL ALARM: Anomalies in ${activeAlarms.join(', ')}`;
                 } else {
-                    banner.className = "w-full p-3 rounded mb-4 text-center text-xl font-bold bg-gray-800 text-green-400 border border-green-500";
-                    banner.innerText = "Global Status: NORMAL";
+                    banner.className = "w-full p-4 rounded-xl mb-6 flex items-center justify-center gap-3 text-lg font-bold bg-gray-900 border border-gray-700 text-emerald-400 transition-all duration-300 shadow-sm";
+                    banner.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Global Status: NORMAL`;
                 }
 
-                // Fetch Alarms for timelog
                 const alarmRes = await fetch('/api/alarms');
                 const alarmData = await alarmRes.json();
                 let logHtml = '';
                 alarmData.forEach(a => {
-                    logHtml += `<li><span class="text-gray-500">[${a.timestamp}]</span> <span class="text-red-400 font-bold">ALARM TRIGGERED</span> -> ${a.station_id}</li>`;
+                    logHtml += `
+                    <li class="flex items-center gap-3 p-2.5 rounded-lg bg-gray-800/50 border border-gray-700/50 hover:bg-gray-800 transition-colors">
+                        <span class="text-gray-500 text-xs w-36 whitespace-nowrap">${a.timestamp}</span>
+                        <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">ALARM EVENT</span>
+                        <span class="text-gray-300 font-semibold flex-1">${a.station_id}</span>
+                    </li>`;
                 });
                 document.getElementById('timelog-list').innerHTML = logHtml;
 
@@ -229,17 +332,34 @@
                 const res = await fetch(`/api/telemetry?node=${currentNode}`);
                 const data = await res.json();
                 
-                const datasets = data.map((m, idx) => {
-                    return {
-                        label: m.machine_id,
+                const datasets = [];
+                const plcDatasets = [];
+                
+                data.forEach((m, idx) => {
+                    datasets.push({
+                        label: m.machine_id + ' (Vib)',
                         data: m.vibration,
-                        borderColor: m.is_anomaly ? '#ef4444' : colors[idx % colors.length],
-                        tension: 0.1
-                    };
+                        borderColor: m.is_anomaly ? '#f43f5e' : '#3b82f6',
+                        backgroundColor: m.is_anomaly ? 'rgba(244, 63, 94, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        borderWidth: 2
+                    });
+
+                    if (m.plc_x) {
+                        plcDatasets.push({ label: 'X Axis', data: m.plc_x, borderColor: m.is_anomaly ? '#f43f5e' : '#3b82f6' });
+                        plcDatasets.push({ label: 'Y Axis', data: m.plc_y, borderColor: m.is_anomaly ? '#f43f5e' : '#10b981' });
+                        plcDatasets.push({ label: 'Z Axis', data: m.plc_z, borderColor: m.is_anomaly ? '#f43f5e' : '#f59e0b' });
+                    }
                 });
                 
                 chartInstance.data.datasets = datasets;
                 chartInstance.update();
+
+                if (data.length > 0 && data[0].plc_x) {
+                    plcChartInstance.data.labels = Array.from({length: data[0].plc_x.length}, (_, i) => i);
+                }
+                plcChartInstance.data.datasets = plcDatasets;
+                plcChartInstance.update();
             } catch (e) {}
         }
 
@@ -247,11 +367,11 @@
         
         // Wait 3 seconds to let backend stabilize and clear ghost rows
         setTimeout(() => {
-            document.getElementById('startup-overlay').classList.add('hidden');
-            // Initial fetch
+            document.getElementById('startup-overlay').style.opacity = '0';
+            setTimeout(() => document.getElementById('startup-overlay').classList.add('hidden'), 500);
+            
             fetchState();
             fetchTelemetry();
-            // Start polling every 1 second
             setInterval(() => {
                 fetchState();
                 fetchTelemetry();

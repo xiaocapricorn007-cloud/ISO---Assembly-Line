@@ -67,18 +67,57 @@ class VibrationAnomalyModel:
 # ---------------------------------------------------------
 # 3. PLC LOGIC CHECK (3D Spatial Coordinate + Time)
 # ---------------------------------------------------------
-class PLCLogicChecker:
+from ml.tcn_ae_plc import PLC_TCNAutoEncoder
+
+class PLCAnomalyModel:
     def __init__(self):
-        self.spatial_tolerance_mm = 2.0 
+        self.models = {}
+        self.thresholds = {}
+        self.seq_lens = {}
+        self.kinematics = {}
+        self._load_pretrained_models()
         
-    def detect(self, machine_id, expected_xyz, actual_xyz):
-        e = np.array(expected_xyz)
-        a = np.array(actual_xyz)
-        distance_mm = np.linalg.norm(e - a)
+    def _load_pretrained_models(self):
+        pretrained_dir = os.path.join("models", "pretrained_plc")
         
-        if distance_mm > self.spatial_tolerance_mm:
-            print(f"[PLC ALARM] Machine {machine_id} 3D Deviation: {distance_mm:.2f}mm > {self.spatial_tolerance_mm}mm")
+        if not os.path.exists(pretrained_dir) or not os.listdir(pretrained_dir):
+            print("[WARNING] Pretrained PLC models not found! Run train_plc.py first.")
+            return
+
+        for filename in os.listdir(pretrained_dir):
+            if filename.endswith(".pth"):
+                machine_id = filename.replace(".pth", "")
+                checkpoint = torch.load(os.path.join(pretrained_dir, filename), weights_only=True)
+                
+                seq_len = checkpoint['seq_len']
+                model = PLC_TCNAutoEncoder(seq_len=seq_len)
+                model.load_state_dict(checkpoint['model_state_dict'])
+                model.eval()
+                
+                self.models[machine_id] = model
+                self.thresholds[machine_id] = checkpoint['anomaly_threshold']
+                self.seq_lens[machine_id] = seq_len
+                self.kinematics[machine_id] = (checkpoint['L1'], checkpoint['L2'])
+                
+    def detect(self, machine_id, plc_time_series):
+        if machine_id not in self.models:
+            return False 
+            
+        model = self.models[machine_id]
+        threshold = self.thresholds[machine_id]
+        seq_len = self.seq_lens[machine_id]
+        
+        # Convert to tensor (1, 3, seq_len)
+        tensor_data = torch.tensor(plc_time_series, dtype=torch.float32).view(1, 3, seq_len)
+        
+        with torch.no_grad():
+            reconstruction = model(tensor_data)
+            mse_loss = torch.mean((reconstruction - tensor_data)**2).item()
+            
+        if mse_loss > threshold:
+            print(f"[PLC ALARM] Machine {machine_id} Anomaly! Loss: {mse_loss:.4f} > {threshold:.4f}")
             return True
+            
         return False
 
 # ---------------------------------------------------------
@@ -87,16 +126,16 @@ class PLCLogicChecker:
 class IdendefEngine:
     def __init__(self):
         self.vibration_model = VibrationAnomalyModel()
-        self.plc_logic = PLCLogicChecker()
+        self.plc_model = PLCAnomalyModel()
         
-    def evaluate_station(self, machine_id, vib_500, exp_xyz, act_xyz):
+    def evaluate_station(self, machine_id, vib_500, plc_series):
         defect_vib = self.vibration_model.detect(machine_id, vib_500)
-        defect_plc = self.plc_logic.detect(machine_id, exp_xyz, act_xyz)
+        defect_plc = self.plc_model.detect(machine_id, plc_series)
         
         is_defect = defect_vib or defect_plc
         
         reasons = []
-        if defect_vib: reasons.append(f"TCN-{machine_id}")
-        if defect_plc: reasons.append("PLC-3D-Dev")
+        if defect_vib: reasons.append(f"Vib-TCN-{machine_id}")
+        if defect_plc: reasons.append(f"PLC-TCN-{machine_id}")
             
         return is_defect, reasons

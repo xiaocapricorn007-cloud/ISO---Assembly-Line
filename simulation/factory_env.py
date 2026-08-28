@@ -40,27 +40,41 @@ class FactorySimulation:
         }
 
     def generate_synthetic_telemetry(self, machine_id, is_faulty):
-        # 2. Vibration
+        # 1. Vibration
         vib_model = self.idendef.vibration_model
-        # Fetch the exact base frequency this specific machine was trained on!
         base_freq = vib_model.base_freqs.get(machine_id, 10.0) 
             
-        t = np.linspace(0, 2, 500)
+        t_vib = np.linspace(0, 2, 500)
         if is_faulty:
-            # Add an 80Hz rattle anomaly
-            vib = np.sin(2 * np.pi * base_freq * t) + 2.0 * np.sin(2 * np.pi * 80 * t) + np.random.normal(0, 0.5, 500)
+            vib = np.sin(2 * np.pi * base_freq * t_vib) + 2.0 * np.sin(2 * np.pi * 80 * t_vib) + np.random.normal(0, 0.5, 500)
         else:
-            # Generate the EXACT clean baseline it was trained on
-            vib = np.sin(2 * np.pi * base_freq * t) + 0.5 * np.sin(2 * np.pi * (base_freq * 2.5) * t) + np.random.normal(0, 0.15, 500)
+            vib = np.sin(2 * np.pi * base_freq * t_vib) + 0.5 * np.sin(2 * np.pi * (base_freq * 2.5) * t_vib) + np.random.normal(0, 0.15, 500)
             
-        # 3. PLC Logic 3D Position
-        exp_xyz = (100.0, 50.0, 200.0)
-        if is_faulty:
-            act_xyz = (103.0, 50.0, 200.0) 
-        else:
-            act_xyz = (100.5, 49.8, 200.1)
+        # 2. PLC 3D Trajectory
+        plc_model = getattr(self.idendef, 'plc_model', None)
+        seq_len = plc_model.seq_lens.get(machine_id, 200) if plc_model else 200
+        L1, L2 = plc_model.kinematics.get(machine_id, (150.0, 100.0)) if plc_model else (150.0, 100.0)
         
-        return vib.tolist(), exp_xyz, act_xyz
+        t_plc = np.linspace(0, 1, seq_len)
+        theta1 = np.pi * np.sin(2 * np.pi * t_plc) 
+        theta2 = 0.5 * np.pi * np.cos(4 * np.pi * t_plc) 
+        
+        x = L1 * np.cos(theta1) + L2 * np.cos(theta1 + theta2)
+        y = L1 * np.sin(theta1) + L2 * np.sin(theta1 + theta2)
+        z = 100.0 + 50.0 * np.sin(2 * np.pi * t_plc)
+        
+        if is_faulty:
+            x += np.random.normal(50.0, 10.0, seq_len)
+            y -= np.random.normal(50.0, 10.0, seq_len)
+            z += np.random.normal(20.0, 5.0, seq_len)
+        else:
+            x += np.random.normal(0, 1.0, seq_len)
+            y += np.random.normal(0, 1.0, seq_len)
+            z += np.random.normal(0, 1.0, seq_len)
+            
+        plc_series = np.vstack((x, y, z)).tolist()
+        
+        return vib.tolist(), plc_series
 
     def process_part(self, part_id):
         """A single part flows through all stations."""
@@ -88,9 +102,6 @@ class FactorySimulation:
         with resource.request() as req:
             yield req
             
-            # Identify which specific machine we got (1 to N)
-            # SimPy doesn't track specific resource IDs easily, so we just pick a random ID 1..N
-            # Or we can track it, but random is fine for simulation
             machine_num = random.randint(1, MACHINE_TOPOLOGY[station_id])
             machine_id = f"{station_id}_M{machine_num}"
             
@@ -101,16 +112,25 @@ class FactorySimulation:
             yield self.env.timeout(actual_ct)
 
             # 3. I-DENDEF Check
-            vib, exp_pos, act_pos = self.generate_synthetic_telemetry(machine_id, is_faulty)
-            is_defect, reasons = self.idendef.evaluate_station(machine_id, vib, exp_pos, act_pos)
+            vib, plc_series = self.generate_synthetic_telemetry(machine_id, is_faulty)
+            is_defect, reasons = self.idendef.evaluate_station(machine_id, vib, plc_series)
             
-            # Log vibration telemetry for the dashboard
             import json
             cursor = self.statecon.conn.cursor()
+            curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Log vibration telemetry
             cursor.execute('''
             INSERT INTO telemetry_logs (timestamp, station_id, vibration_data, is_anomaly)
             VALUES (?, ?, ?, ?)
-            ''', (time.strftime('%Y-%m-%d %H:%M:%S'), machine_id, json.dumps(vib), is_defect))
+            ''', (curr_time, machine_id, json.dumps(vib), is_defect))
+            
+            # Log PLC telemetry
+            cursor.execute('''
+            INSERT INTO plc_logs (timestamp, station_id, plc_x, plc_y, plc_z, is_anomaly)
+            VALUES (?, ?, ?, ?, ?, ?)
+            ''', (curr_time, machine_id, json.dumps(plc_series[0]), json.dumps(plc_series[1]), json.dumps(plc_series[2]), is_defect))
+            
             self.statecon.conn.commit()
             
             status = 'BROKEN' if is_defect else 'RUNNING'

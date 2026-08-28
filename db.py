@@ -67,6 +67,19 @@ def init_db():
     )
     ''')
     
+    # I-DENDEF PLC Telemetry Logs (X, Y, Z arrays)
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS plc_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TIMESTAMP,
+        station_id TEXT,
+        plc_x TEXT,
+        plc_y TEXT,
+        plc_z TEXT,
+        is_anomaly BOOLEAN
+    )
+    ''')
+    
     # Clear ghost data from previous runs
     cursor.execute('DELETE FROM machines')
     cursor.execute('DELETE FROM telemetry_logs')

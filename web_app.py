@@ -57,11 +57,18 @@ def get_telemetry():
         for m_id in machines:
             query = f"SELECT * FROM telemetry_logs WHERE station_id='{m_id}' ORDER BY id DESC LIMIT 1"
             df_tel = pd.read_sql(query, conn)
-            if not df_tel.empty:
+            
+            plc_query = f"SELECT * FROM plc_logs WHERE station_id='{m_id}' ORDER BY id DESC LIMIT 1"
+            df_plc = pd.read_sql(plc_query, conn)
+            
+            if not df_tel.empty and not df_plc.empty:
                 data.append({
                     "machine_id": m_id,
                     "vibration": json.loads(df_tel['vibration_data'].iloc[0]),
-                    "is_anomaly": bool(df_tel['is_anomaly'].iloc[0]),
+                    "plc_x": json.loads(df_plc['plc_x'].iloc[0]),
+                    "plc_y": json.loads(df_plc['plc_y'].iloc[0]),
+                    "plc_z": json.loads(df_plc['plc_z'].iloc[0]),
+                    "is_anomaly": bool(df_tel['is_anomaly'].iloc[0]) or bool(df_plc['is_anomaly'].iloc[0]),
                     "timestamp": df_tel['timestamp'].iloc[0]
                 })
         conn.close()

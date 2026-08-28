@@ -117,3 +117,14 @@ Every time a major design decision is finalized or a significant change is commi
 **[2026-08-28] - Documentation Update for V2 Architecture**
 - Updated `README.md` to fully reflect the V2 remodel based on `Runner.md` and `plan.md`.
 - Reflected the shift to a PyTorch TCN 16-machine granular architecture for I-DENDEF, the addition of the centralized Veto Engine, and the new Flask + Chart.js web dashboard.
+
+**[2026-08-28] - PLC Logic Integration & Multi-Joint Modeling**
+- Expanded I-DENDEF to evaluate 3D robotic tool coordinates (X, Y, Z).
+- Created a PyTorch `PLC_TCNAutoEncoder` designed to dynamically handle varying sequence lengths.
+- Implemented `train_plc.py` to generate unique synthetic multi-joint robotic kinematics for all 16 machines and pre-train specific anomaly thresholds.
+- Updated the backend (`idendef.py`, `factory_env.py`, `db.py`) to process and log PLC deviations into a new `plc_logs` SQLite table.
+
+**[2026-08-28] - Dashboard UI Overhaul & Optimization**
+- Completely redesigned `index.html` to optimize the operator viewing experience.
+- Implemented a side-by-side flexbox layout for the Vibration and PLC charts to eliminate vertical scrolling.
+- Enhanced the UI with a refined dark mode palette, custom scrollbars, SVG iconography, status badges, and polished gradient borders.
