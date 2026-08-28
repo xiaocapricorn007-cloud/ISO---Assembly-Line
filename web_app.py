@@ -55,6 +55,24 @@ def get_parts():
     except Exception as e:
         return jsonify([])
 
+@app.route('/api/inventory')
+def get_inventory():
+    try:
+        conn = get_connection()
+        query = "SELECT station_id, part_id, on_hand FROM inventory"
+        df_inv = pd.read_sql(query, conn)
+        conn.close()
+        
+        inv_dict = {}
+        for _, row in df_inv.iterrows():
+            inv_dict[row['station_id']] = {
+                "part_id": row['part_id'],
+                "on_hand": row['on_hand']
+            }
+        return jsonify(inv_dict)
+    except Exception as e:
+        return jsonify({})
+
 @app.route('/api/telemetry')
 def get_telemetry():
     node = request.args.get('node', '')

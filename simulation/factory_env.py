@@ -33,10 +33,10 @@ class FactorySimulation:
         # SimPy Inventory & Buffers
         self.raw_inventory = simpy.Container(env, capacity=1000, init=100) 
         self.buffers = {
-            'Buffer_A_B': simpy.Store(env, capacity=10),
-            'Buffer_B_C': simpy.Store(env, capacity=10),
-            'Buffer_C_D': simpy.Store(env, capacity=10),
-            'Buffer_D_E': simpy.Store(env, capacity=10)
+            'Buffer_A_B': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_A_B')),
+            'Buffer_B_C': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_B_C')),
+            'Buffer_C_D': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_C_D')),
+            'Buffer_D_E': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_D_E'))
         }
 
     def update_part_location(self, part_id, location, status="In Progress"):
@@ -147,8 +147,15 @@ class FactorySimulation:
             # Record that the part is now actively inside this station
             self.update_part_location(part_id, station_id)
             
-            # Simulate Work
-            target_ct = self.statecon.get_global_var("target_cycle_time")
+            # Check BOM Starvation
+            if not self.statecon.consume_inventory(station_id):
+                print(f"[{machine_id}] BOM STARVATION! Waiting for {station_id} materials.")
+                self.statecon.update_machine_state(machine_id, 'STARVED', 0.0)
+                yield self.env.timeout(10.0) # Simulating emergency replenishment
+                self.statecon.consume_inventory(station_id)
+            
+            # Simulate Work using real architectural cycle times
+            target_ct = self.statecon.get_station_cycle_time(station_id)
             
             # Randomly trigger distinct anomaly classes
             rand_val = random.random()
@@ -160,14 +167,16 @@ class FactorySimulation:
             elif rand_val < 0.05:
                 anomaly_type = "Catastrophic Collision"
                 
-            actual_ct = target_ct * random.uniform(1.5, 2.5) if anomaly_type else target_ct * random.uniform(0.9, 1.1)
-            yield self.env.timeout(actual_ct)
+            actual_ct = target_ct * random.uniform(1.5, 2.5) if anomaly_type else target_ct * random.uniform(0.95, 1.05)
+            
+            # Scale simulation timeout so we don't literally wait 60 seconds (15x speedup)
+            yield self.env.timeout(actual_ct / 15.0)
 
             # 3. I-DENDEF Check
             vib, plc_series = self.generate_synthetic_telemetry(machine_id, anomaly_type)
             is_defect, reasons, vib_mse, plc_mse = self.idendef.evaluate_station(machine_id, vib, plc_series)
             
-            # Extract independent flags strictly from ML model predictions (NOT from the simulation ground truth)
+            # Extract independent flags strictly from ML model predictions
             defect_vib = any("Vib-TCN" in r for r in reasons)
             defect_plc = any("PLC-TCN" in r for r in reasons)
             
@@ -175,19 +184,16 @@ class FactorySimulation:
             cursor = self.statecon.conn.cursor()
             curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
             
-            # Log vibration telemetry (independent boolean based on ML model output)
             cursor.execute('''
             INSERT INTO telemetry_logs (timestamp, station_id, vibration_data, is_anomaly)
             VALUES (?, ?, ?, ?)
             ''', (curr_time, machine_id, json.dumps(vib), defect_vib))
             
-            # Log PLC telemetry (independent boolean based on ML model output)
             cursor.execute('''
             INSERT INTO plc_logs (timestamp, station_id, plc_x, plc_y, plc_z, is_anomaly)
             VALUES (?, ?, ?, ?, ?, ?)
             ''', (curr_time, machine_id, json.dumps(plc_series[0]), json.dumps(plc_series[1]), json.dumps(plc_series[2]), defect_plc))
             
-            # Log ML Evaluation metrics (Ground Truth vs Prediction)
             ground_truth_type = anomaly_type if anomaly_type else "Ideal"
             cursor.execute('''
             INSERT INTO ml_eval_logs (timestamp, machine_id, anomaly_type, defect_vib, defect_plc, vib_mse, plc_mse)
@@ -199,10 +205,10 @@ class FactorySimulation:
             status = 'BROKEN' if is_defect else 'RUNNING'
             self.statecon.update_machine_state(machine_id, status, actual_ct)
             
-            # If broken, simulate repair downtime so the dashboard sees the red state for a while
+            # If broken, simulate repair downtime
             if is_defect:
                 print(f"[{machine_id}] OFFLINE for repair...")
-                yield self.env.timeout(50.0) # 50 simulated seconds of repair
+                yield self.env.timeout(20.0) # Scaled repair time
                 self.statecon.update_machine_state(machine_id, 'RUNNING', actual_ct)
                 print(f"[{machine_id}] REPAIRED. Back online.")
 
@@ -218,24 +224,29 @@ class FactorySimulation:
             event_log = f"[{machine_id}] Veto: {veto_result} | I-DENDEF: {reasons}"
             self.optineck.log_metrics(dey, actual_ct, bottleneck, event_log)
 
-            # 5. Push to downstream buffer
+            # 5. Push to downstream buffer (Will automatically block if Buffer is at B_max!)
             if downstream:
+                if len(downstream.items) >= downstream.capacity:
+                    print(f"[{machine_id}] BLOCKED! Downstream buffer is full.")
+                    self.statecon.update_machine_state(machine_id, 'BLOCKED', actual_ct)
                 yield downstream.put(part_id)
+                # Once unblocked (or if it wasn't), ensure it's marked running
+                self.statecon.update_machine_state(machine_id, 'RUNNING', actual_ct)
 
 def part_generator(env, sim):
-    """Generates new parts entering the factory continuously."""
+    """Generates new parts entering the factory continuously based on Takt Time."""
     part_count = 0
+    takt_time = sim.statecon.get_global_var("takt_time_TT")
+    scaled_takt = takt_time / 15.0
     while True:
         part_count += 1
         part_id = f"Part_{part_count}"
         env.process(sim.process_part(part_id))
-        yield env.timeout(45.0) # Spawn one part every 45 seconds (allows 1 to traverse completely)
+        yield env.timeout(scaled_takt)
 
 def start_simulation():
     env = simpy.Environment()
     sim = FactorySimulation(env)
-    
-    sim.statecon.set_global_var("target_cycle_time", 4.0)
     
     # Start the continuous flow of parts
     env.process(part_generator(env, sim))

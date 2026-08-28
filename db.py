@@ -90,6 +90,15 @@ def init_db():
     )
     ''')
     
+    # Station BOM Inventory Tracking
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS inventory (
+        station_id TEXT PRIMARY KEY,
+        part_id TEXT,
+        on_hand INTEGER
+    )
+    ''')
+    
     # ML Evaluation Tracker
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS ml_eval_logs (
@@ -112,6 +121,7 @@ def init_db():
     cursor.execute('DELETE FROM phantom_logs')
     cursor.execute('DELETE FROM ml_eval_logs')
     cursor.execute('DELETE FROM parts')
+    cursor.execute('DELETE FROM inventory')
     conn.commit()
     
     conn.close()
