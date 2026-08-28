@@ -102,22 +102,27 @@ class FactorySimulation:
     def process_part(self, part_id):
         """A single part flows through all stations."""
         self.update_part_location(part_id, 'Buffer_Raw')
+        yield self.env.timeout(2.0)
         
         # --- STATION A ---
         yield self.env.process(self.run_machine_cycle('Station_A', part_id, self.raw_inventory, self.buffers['Buffer_A_B']))
         self.update_part_location(part_id, 'Buffer_A_B')
+        yield self.env.timeout(3.0) # Transit time on conveyor
         
         # --- STATION B ---
         yield self.env.process(self.run_machine_cycle('Station_B', part_id, self.buffers['Buffer_A_B'], self.buffers['Buffer_B_C']))
         self.update_part_location(part_id, 'Buffer_B_C')
+        yield self.env.timeout(3.0)
         
         # --- STATION C ---
         yield self.env.process(self.run_machine_cycle('Station_C_Dark', part_id, self.buffers['Buffer_B_C'], self.buffers['Buffer_C_D']))
         self.update_part_location(part_id, 'Buffer_C_D')
+        yield self.env.timeout(3.0)
         
         # --- STATION D ---
         yield self.env.process(self.run_machine_cycle('Station_D', part_id, self.buffers['Buffer_C_D'], self.buffers['Buffer_D_E']))
         self.update_part_location(part_id, 'Buffer_D_E')
+        yield self.env.timeout(3.0)
         
         # --- STATION E ---
         yield self.env.process(self.run_machine_cycle('Station_E', part_id, self.buffers['Buffer_D_E'], None))
@@ -224,7 +229,7 @@ def part_generator(env, sim):
         part_count += 1
         part_id = f"Part_{part_count}"
         env.process(sim.process_part(part_id))
-        yield env.timeout(10.0) # New part arrives every 10 seconds
+        yield env.timeout(45.0) # Spawn one part every 45 seconds (allows 1 to traverse completely)
 
 def start_simulation():
     env = simpy.Environment()
