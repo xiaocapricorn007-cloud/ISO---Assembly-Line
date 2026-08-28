@@ -6,11 +6,11 @@ import numpy as np
 from ml.tcn_ae_plc import PLC_TCNAutoEncoder
 
 MACHINE_TOPOLOGY = {
-    'Station_A': 3,
-    'Station_B': 2,
-    'Station_C_Dark': 5,
-    'Station_D': 4,
-    'Station_E': 2
+    'Pressing': 3,
+    'Welding': 2,
+    'Painting': 5,
+    'PowerTrain': 4,
+    'Final_Assembly': 2
 }
 
 def generate_robotic_kinematics(L1, L2, seq_len):

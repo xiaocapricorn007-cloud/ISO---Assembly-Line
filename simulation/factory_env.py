@@ -9,11 +9,11 @@ from core.optineck import OptineckEngine
 from core.veto_engine import VetoEngine
 
 MACHINE_TOPOLOGY = {
-    'Station_A': 3,
-    'Station_B': 2,
-    'Station_C_Dark': 5,
-    'Station_D': 4,
-    'Station_E': 2
+    'Pressing': 3,
+    'Welding': 2,
+    'Painting': 5,
+    'PowerTrain': 4,
+    'Final_Assembly': 2
 }
 
 class FactorySimulation:
@@ -33,10 +33,10 @@ class FactorySimulation:
         # SimPy Inventory & Buffers
         self.raw_inventory = simpy.Container(env, capacity=1000, init=100) 
         self.buffers = {
-            'Buffer_A_B': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_A_B')),
-            'Buffer_B_C': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_B_C')),
-            'Buffer_C_D': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_C_D')),
-            'Buffer_D_E': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_D_E'))
+            'Buffer_Pressing_Welding': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_Pressing_Welding')),
+            'Buffer_Welding_Painting': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_Welding_Painting')),
+            'Buffer_Painting_PowerTrain': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_Painting_PowerTrain')),
+            'Buffer_PowerTrain_FinalAssembly': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_PowerTrain_FinalAssembly'))
         }
 
     def update_part_location(self, part_id, location, status="In Progress"):
@@ -105,33 +105,33 @@ class FactorySimulation:
         yield self.env.timeout(2.0)
         
         # --- STATION A ---
-        yield self.env.process(self.run_machine_cycle('Station_A', part_id, self.raw_inventory, self.buffers['Buffer_A_B']))
-        self.update_part_location(part_id, 'Buffer_A_B')
+        yield self.env.process(self.run_machine_cycle('Pressing', part_id, self.raw_inventory, self.buffers['Buffer_Pressing_Welding']))
+        self.update_part_location(part_id, 'Buffer_Pressing_Welding')
         yield self.env.timeout(3.0) # Transit time on conveyor
         
         # --- STATION B ---
-        yield self.env.process(self.run_machine_cycle('Station_B', part_id, self.buffers['Buffer_A_B'], self.buffers['Buffer_B_C']))
-        self.update_part_location(part_id, 'Buffer_B_C')
+        yield self.env.process(self.run_machine_cycle('Welding', part_id, self.buffers['Buffer_Pressing_Welding'], self.buffers['Buffer_Welding_Painting']))
+        self.update_part_location(part_id, 'Buffer_Welding_Painting')
         yield self.env.timeout(3.0)
         
         # --- STATION C ---
-        yield self.env.process(self.run_machine_cycle('Station_C_Dark', part_id, self.buffers['Buffer_B_C'], self.buffers['Buffer_C_D']))
-        self.update_part_location(part_id, 'Buffer_C_D')
+        yield self.env.process(self.run_machine_cycle('Painting', part_id, self.buffers['Buffer_Welding_Painting'], self.buffers['Buffer_Painting_PowerTrain']))
+        self.update_part_location(part_id, 'Buffer_Painting_PowerTrain')
         yield self.env.timeout(3.0)
         
         # --- STATION D ---
-        yield self.env.process(self.run_machine_cycle('Station_D', part_id, self.buffers['Buffer_C_D'], self.buffers['Buffer_D_E']))
-        self.update_part_location(part_id, 'Buffer_D_E')
+        yield self.env.process(self.run_machine_cycle('PowerTrain', part_id, self.buffers['Buffer_Painting_PowerTrain'], self.buffers['Buffer_PowerTrain_FinalAssembly']))
+        self.update_part_location(part_id, 'Buffer_PowerTrain_FinalAssembly')
         yield self.env.timeout(3.0)
         
         # --- STATION E ---
-        yield self.env.process(self.run_machine_cycle('Station_E', part_id, self.buffers['Buffer_D_E'], None))
+        yield self.env.process(self.run_machine_cycle('Final_Assembly', part_id, self.buffers['Buffer_PowerTrain_FinalAssembly'], None))
         self.update_part_location(part_id, 'Completed', status="Finished")
 
     def run_machine_cycle(self, station_id, part_id, upstream, downstream):
         """Requests a machine in the station, processes, and pushes to downstream."""
         # 1. Retrieve part
-        if station_id == 'Station_A':
+        if station_id == 'Pressing':
             yield upstream.get(1) # Get from raw inventory
         else:
             _ = yield upstream.get() # Get from buffer

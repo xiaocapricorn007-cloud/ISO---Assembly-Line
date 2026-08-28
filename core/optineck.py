@@ -32,7 +32,7 @@ class OptineckEngine:
         Calculates DEY = (3600 / max(CT_i)) * eta
         Reads live cycle times from database, eta from S-TATECON.
         """
-        eta = self.statecon.get_global_var("structural_efficiency")
+        eta = self.statecon.get_global_var("structural_efficiency_eta")
         
         cursor = self.conn.cursor()
         cursor.execute("SELECT MAX(current_cycle_time) FROM machines WHERE status != 'BROKEN'")

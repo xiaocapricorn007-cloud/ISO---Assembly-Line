@@ -13,8 +13,8 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
 TOPOLOGY = {
-    'Station_A': 3, 'Station_B': 2, 'Station_C_Dark': 5,
-    'Station_D': 4, 'Station_E': 2
+    'Pressing': 3, 'Welding': 2, 'Painting': 5,
+    'PowerTrain': 4, 'Final_Assembly': 2
 }
 
 @app.route('/')

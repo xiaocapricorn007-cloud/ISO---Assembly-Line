@@ -7,11 +7,11 @@ from ml.tcn_ae import TCNAutoEncoder
 
 # Define the exact machine topologies required
 MACHINE_TOPOLOGY = {
-    'Station_A': 3,
-    'Station_B': 2,
-    'Station_C_Dark': 5,
-    'Station_D': 4,
-    'Station_E': 2
+    'Pressing': 3,
+    'Welding': 2,
+    'Painting': 5,
+    'PowerTrain': 4,
+    'Final_Assembly': 2
 }
 
 def generate_synthetic_dataset(base_freq, num_samples=1000, seq_len=500):

@@ -34,28 +34,28 @@ class StateconEngine:
         
         # Station Timing (Group 2)
         self.station_cycle_times = {
-            "Station_A": 62.0,
-            "Station_B": 58.0,
-            "Station_C_Dark": 65.0,  # Bottleneck
-            "Station_D": 59.0,
-            "Station_E": 61.0
+            "Pressing": 62.0,
+            "Welding": 58.0,
+            "Painting": 65.0,  # Bottleneck
+            "PowerTrain": 59.0,
+            "Final_Assembly": 61.0
         }
         
         # Buffer Capacities (Group 3)
         self.buffer_capacities = {
-            "Buffer_A_B": 5,
-            "Buffer_B_C": 5,
-            "Buffer_C_D": 5,
-            "Buffer_D_E": 5
+            "Buffer_Pressing_Welding": 5,
+            "Buffer_Welding_Painting": 5,
+            "Buffer_Painting_PowerTrain": 5,
+            "Buffer_PowerTrain_FinalAssembly": 5
         }
         
         # Single-Model BOM & Inventory (Group 5)
         self.bom_inventory = {
-            "Station_A": {"part_id": "Sheet_Metal", "qty_per_car": 1, "on_hand": 500},
-            "Station_B": {"part_id": "Welding_Wire", "qty_per_car": 1, "on_hand": 500},
-            "Station_C_Dark": {"part_id": "Paint_Gallons", "qty_per_car": 2, "on_hand": 1000},
-            "Station_D": {"part_id": "Engine_Block", "qty_per_car": 1, "on_hand": 5}, # Deliberately low to trigger starvation!
-            "Station_E": {"part_id": "Tires", "qty_per_car": 4, "on_hand": 2000}
+            "Pressing": {"part_id": "Sheet_Metal", "qty_per_car": 1, "on_hand": 500},
+            "Welding": {"part_id": "Welding_Wire", "qty_per_car": 1, "on_hand": 500},
+            "Painting": {"part_id": "Paint_Gallons", "qty_per_car": 2, "on_hand": 1000},
+            "PowerTrain": {"part_id": "Engine_Block", "qty_per_car": 1, "on_hand": 5}, # Deliberately low to trigger starvation!
+            "Final_Assembly": {"part_id": "Tires", "qty_per_car": 4, "on_hand": 2000}
         }
         
         # Sync Initial Inventory to DB
