@@ -32,6 +32,10 @@ class StateconEngine:
         """Allows I-DENDEF and O-PTINECK to retrieve parameters."""
         return self.global_vars.get(key)
         
+    def set_global_var(self, key, value):
+        """Allows updating global parameters dynamically."""
+        self.global_vars[key] = value
+        
     def update_machine_state(self, station_id, status, current_cycle_time):
         cursor = self.conn.cursor()
         # Check if exists
