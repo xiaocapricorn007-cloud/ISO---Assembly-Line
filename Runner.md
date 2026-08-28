@@ -128,3 +128,15 @@ Every time a major design decision is finalized or a significant change is commi
 - Completely redesigned `index.html` to optimize the operator viewing experience.
 - Implemented a side-by-side flexbox layout for the Vibration and PLC charts to eliminate vertical scrolling.
 - Enhanced the UI with a refined dark mode palette, custom scrollbars, SVG iconography, status badges, and polished gradient borders.
+
+**[2026-08-28] - Advanced Model Tuning & Ground-Truth Evaluation Matrix**
+- Increased PyTorch PLC training dataset from 1000 to 3000 samples and deepened epochs from 15 to 60.
+- Implemented rigorous Z-Score statistical thresholding (`mean + 4 * std`) to bound the False Positive rate.
+- Tuned the `factory_env.py` anomaly generator to introduce sudden mechanical slippages in the Z-axis.
+- Hooked `masterstart.py` to intercept `Ctrl+C` and output a fully automated Scikit-Learn evaluation matrix (ROC-AUC, PR-AUC, F1-Scores) comparing the hidden Ground Truths to the independent ML Predictions.
+
+**[2026-08-28] - Animated S-TATECON Flowchart & Parts Tracking**
+- Added a `parts` tracking table to the SQLite schema to log live inventory positions (Buffer vs Station).
+- Integrated a physical conveyor-transit delay (`yield env.timeout(3.0)`) into the SimPy backend to accurately map to real-world physics.
+- Replaced the boring static S-TATECON table with a visually stunning decoupled CSS-driven Assembly Line Flowchart UI.
+- Programmed a custom JavaScript logic loop (`startFakeFlowAnimation()`) to generate, continuously track, and seamlessly animate multiple staggered neon blocks sliding through the factory stations at 60FPS.

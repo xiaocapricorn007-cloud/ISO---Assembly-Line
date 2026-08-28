@@ -27,3 +27,10 @@
 - [x] Scrapped Tkinter for a native **Flask + Chart.js Web Dashboard** (`web_app.py`, `templates/index.html`).
 - [x] Implemented multi-line overlaid vibration charts, collapsible topology trees, and live Timelogs.
 - [x] Enforced SQLite persistence wiping on `masterstart` boot to prevent ghost anomalies.
+
+## Phase 6: Multi-Modal Diagnostics & S-TATECON Flow
+- [x] **3D PLC Trajectories**: Implemented spatial kinematics (`X`, `Y`, `Z`) autoencoders using AdaptiveAvgPool1d to detect Tool Miscalibration anomalies.
+- [x] **Model Tuning**: Deepened TCN Autoencoder epochs, tripled datasets, and implemented rigorous Z-Score statistical thresholding to eliminate false positives and boost PR-AUC.
+- [x] **Evaluation Matrix**: Intercept `Ctrl+C` in `masterstart.py` to dump a full Scikit-Learn evaluation matrix (ROC-AUC, PR-AUC, F1-Scores) comparing hidden Ground Truths to ML Predictions.
+- [x] **Visual Assembly Flowchart**: Overhauled the S-TATECON dashboard tab with a highly-polished decoupled CSS-driven animation simulating multi-part physical transit along the conveyor line.
+- [ ] **Stock & Inventory Logic**: Bind the backend SimPy block inventory dynamically to the UI Flowchart tracking logic.
