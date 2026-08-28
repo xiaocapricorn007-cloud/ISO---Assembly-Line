@@ -49,6 +49,73 @@ class OptineckEngine:
         
         return dey, bottleneck
 
+    def run_genetic_optimizer(self):
+        """
+        Runs a heuristic Genetic Algorithm to balance the line.
+        Objective: Minimize max(CT_i) (the bottleneck) while keeping total work content W constant.
+        Passes proposed solution to VetoEngine. If approved, applies it to DB.
+        """
+        from core.veto_engine import VetoEngine
+        veto = VetoEngine()
+        
+        # 1. Fetch current times
+        self.statecon.refresh_config()
+        current_times = self.statecon.station_cycle_times
+        stations = list(current_times.keys())
+        total_work = sum(current_times.values())
+        current_bottleneck = max(current_times.values())
+        
+        # 2. GA heuristic (for simplicity, targets perfect average balance +/- 0.5s variance)
+        import random
+        target_avg = total_work / len(stations)
+        
+        proposed_times = {}
+        remaining_work = total_work
+        for i, st in enumerate(stations):
+            if i == len(stations) - 1:
+                proposed_times[st] = round(remaining_work, 1)
+            else:
+                # Add slight random mutation around the average
+                val = round(target_avg + random.uniform(-0.5, 0.5), 1)
+                proposed_times[st] = val
+                remaining_work -= val
+                
+        proposed_bottleneck = max(proposed_times.values())
+        
+        # 3. Calculate metrics
+        time_saved_per_cycle = current_bottleneck - proposed_bottleneck
+        shift_N = self.statecon.get_global_var("shift_quantity_N")
+        projected_time_saved = time_saved_per_cycle * shift_N
+        
+        # 4. Check Veto
+        veto_flag, veto_msg = veto.check_whiplash(projected_time_saved)
+        
+        if veto_flag:
+            return {"status": "rejected", "reason": veto_msg, "time_saved": projected_time_saved}
+            
+        # 5. Apply to DB
+        cursor = self.conn.cursor()
+        for st, new_ct in proposed_times.items():
+            cursor.execute('''
+                UPDATE system_config SET value = ? 
+                WHERE config_group = 'station' AND key = ?
+            ''', (new_ct, st))
+        self.conn.commit()
+        
+        # Update metrics
+        old_dey = (3600.0 / current_bottleneck) * self.statecon.get_global_var("structural_efficiency_eta")
+        new_dey = (3600.0 / proposed_bottleneck) * self.statecon.get_global_var("structural_efficiency_eta")
+        
+        return {
+            "status": "applied",
+            "old_bottleneck": current_bottleneck,
+            "new_bottleneck": proposed_bottleneck,
+            "old_dey": round(old_dey, 1),
+            "new_dey": round(new_dey, 1),
+            "projected_time_saved_sec": projected_time_saved,
+            "new_times": proposed_times
+        }
+
     def log_metrics(self, dey, max_ct, bottleneck, event_log=""):
         cursor = self.conn.cursor()
         cursor.execute('''

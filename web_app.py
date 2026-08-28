@@ -95,6 +95,16 @@ def config_manager():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/optimize', methods=['POST'])
+def run_optimizer():
+    try:
+        from core.optineck import OptineckEngine
+        engine = OptineckEngine()
+        result = engine.run_genetic_optimizer()
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/telemetry')
 def get_telemetry():
     node = request.args.get('node', '')

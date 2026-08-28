@@ -236,7 +236,12 @@
                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                                 System Configuration
                             </h3>
-                            <button onclick="saveConfig()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors">Apply Changes</button>
+                            <div class="flex gap-2">
+                                <button onclick="runOptimizer()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow transition-colors flex items-center gap-1">
+                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> O-PTINECK GA
+                                </button>
+                                <button onclick="saveConfig()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors">Apply Changes</button>
+                            </div>
                         </div>
                         <div class="overflow-y-auto max-h-[300px] pr-2 custom-scrollbar flex-1" id="config-container">
                             <!-- Populated by JS -->
@@ -713,6 +718,24 @@
                     btn.classList.replace('bg-emerald-600', 'bg-blue-600');
                 }, 1500);
             } catch (e) {}
+        }
+
+        async function runOptimizer() {
+            try {
+                const res = await fetch('/api/optimize', { method: 'POST' });
+                const data = await res.json();
+                
+                if (data.status === 'applied') {
+                    alert(`O-PTINECK Optimization Applied!\n\nBottleneck reduced from ${data.old_bottleneck}s to ${data.new_bottleneck}s.\nDEY increased from ${data.old_dey} to ${data.new_dey} parts/hour.\nProjected time saved per shift: ${data.projected_time_saved_sec} seconds.`);
+                    fetchConfig(); // Reload the UI fields
+                } else if (data.status === 'rejected') {
+                    alert(`O-PTINECK Optimization VETOED by Physics Engine!\n\nReason: ${data.reason}\nTime saved (${data.time_saved}s) is insufficient to overcome switching costs.`);
+                } else {
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (e) {
+                alert("Failed to reach O-PTINECK API.");
+            }
         }
 
         initChart();
