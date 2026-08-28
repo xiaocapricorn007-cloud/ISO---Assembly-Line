@@ -39,16 +39,19 @@ class FactorySimulation:
             'Buffer_D_E': simpy.Store(env, capacity=10)
         }
 
-    def generate_synthetic_telemetry(self, machine_id, is_faulty):
+    def generate_synthetic_telemetry(self, machine_id, anomaly_type):
         # 1. Vibration
         vib_model = self.idendef.vibration_model
         base_freq = vib_model.base_freqs.get(machine_id, 10.0) 
             
         t_vib = np.linspace(0, 2, 500)
-        if is_faulty:
-            vib = np.sin(2 * np.pi * base_freq * t_vib) + 2.0 * np.sin(2 * np.pi * 80 * t_vib) + np.random.normal(0, 0.5, 500)
-        else:
-            vib = np.sin(2 * np.pi * base_freq * t_vib) + 0.5 * np.sin(2 * np.pi * (base_freq * 2.5) * t_vib) + np.random.normal(0, 0.15, 500)
+        
+        # Base ideal vibration
+        vib = np.sin(2 * np.pi * base_freq * t_vib) + 0.5 * np.sin(2 * np.pi * (base_freq * 2.5) * t_vib) + np.random.normal(0, 0.15, 500)
+        
+        if anomaly_type == "Bearing Degradation" or anomaly_type == "Catastrophic Collision":
+            # Add an 80Hz rattle anomaly or massive spike
+            vib += 2.0 * np.sin(2 * np.pi * 80 * t_vib) + np.random.normal(0, 0.5, 500)
             
         # 2. PLC 3D Trajectory
         plc_model = getattr(self.idendef, 'plc_model', None)
@@ -63,14 +66,21 @@ class FactorySimulation:
         y = L1 * np.sin(theta1) + L2 * np.sin(theta1 + theta2)
         z = 100.0 + 50.0 * np.sin(2 * np.pi * t_plc)
         
-        if is_faulty:
+        # Base ideal PLC variance
+        x += np.random.normal(0, 1.0, seq_len)
+        y += np.random.normal(0, 1.0, seq_len)
+        z += np.random.normal(0, 1.0, seq_len)
+        
+        if anomaly_type == "Tool Miscalibration":
+            # Slow spatial drift over time
+            drift = np.linspace(0, 30.0, seq_len)
+            x += drift
+            y -= drift
+        elif anomaly_type == "Catastrophic Collision":
+            # Massive structural deviation
             x += np.random.normal(50.0, 10.0, seq_len)
             y -= np.random.normal(50.0, 10.0, seq_len)
             z += np.random.normal(20.0, 5.0, seq_len)
-        else:
-            x += np.random.normal(0, 1.0, seq_len)
-            y += np.random.normal(0, 1.0, seq_len)
-            z += np.random.normal(0, 1.0, seq_len)
             
         plc_series = np.vstack((x, y, z)).tolist()
         
@@ -107,29 +117,43 @@ class FactorySimulation:
             
             # Simulate Work
             target_ct = self.statecon.get_global_var("target_cycle_time")
-            is_faulty = random.random() < 0.05
-            actual_ct = target_ct * random.uniform(1.5, 2.5) if is_faulty else target_ct * random.uniform(0.9, 1.1)
+            
+            # Randomly trigger distinct anomaly classes
+            rand_val = random.random()
+            anomaly_type = None
+            if rand_val < 0.02:
+                anomaly_type = "Bearing Degradation"
+            elif rand_val < 0.04:
+                anomaly_type = "Tool Miscalibration"
+            elif rand_val < 0.05:
+                anomaly_type = "Catastrophic Collision"
+                
+            actual_ct = target_ct * random.uniform(1.5, 2.5) if anomaly_type else target_ct * random.uniform(0.9, 1.1)
             yield self.env.timeout(actual_ct)
 
             # 3. I-DENDEF Check
-            vib, plc_series = self.generate_synthetic_telemetry(machine_id, is_faulty)
+            vib, plc_series = self.generate_synthetic_telemetry(machine_id, anomaly_type)
             is_defect, reasons = self.idendef.evaluate_station(machine_id, vib, plc_series)
+            
+            # Extract independent flags strictly from ML model predictions (NOT from the simulation ground truth)
+            defect_vib = any("Vib-TCN" in r for r in reasons)
+            defect_plc = any("PLC-TCN" in r for r in reasons)
             
             import json
             cursor = self.statecon.conn.cursor()
             curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
             
-            # Log vibration telemetry
+            # Log vibration telemetry (independent boolean based on ML model output)
             cursor.execute('''
             INSERT INTO telemetry_logs (timestamp, station_id, vibration_data, is_anomaly)
             VALUES (?, ?, ?, ?)
-            ''', (curr_time, machine_id, json.dumps(vib), is_defect))
+            ''', (curr_time, machine_id, json.dumps(vib), defect_vib))
             
-            # Log PLC telemetry
+            # Log PLC telemetry (independent boolean based on ML model output)
             cursor.execute('''
             INSERT INTO plc_logs (timestamp, station_id, plc_x, plc_y, plc_z, is_anomaly)
             VALUES (?, ?, ?, ?, ?, ?)
-            ''', (curr_time, machine_id, json.dumps(plc_series[0]), json.dumps(plc_series[1]), json.dumps(plc_series[2]), is_defect))
+            ''', (curr_time, machine_id, json.dumps(plc_series[0]), json.dumps(plc_series[1]), json.dumps(plc_series[2]), defect_plc))
             
             self.statecon.conn.commit()
             

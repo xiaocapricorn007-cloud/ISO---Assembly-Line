@@ -85,8 +85,13 @@ def get_telemetry():
 def get_alarms():
     try:
         conn = get_connection()
-        # Fetch the last 20 anomalies triggered across any machine
-        query = "SELECT timestamp, station_id FROM telemetry_logs WHERE is_anomaly=1 ORDER BY id DESC LIMIT 20"
+        # Fetch the last 20 anomalies triggered across any machine from both ML models
+        query = """
+        SELECT timestamp, station_id, 'Vibration Anomaly (e.g. Bearing Degradation)' as type FROM telemetry_logs WHERE is_anomaly=1
+        UNION
+        SELECT timestamp, station_id, 'PLC Anomaly (e.g. Tool Miscalibration)' as type FROM plc_logs WHERE is_anomaly=1
+        ORDER BY timestamp DESC LIMIT 20
+        """
         df_alarms = pd.read_sql(query, conn)
         conn.close()
         return jsonify(df_alarms.to_dict(orient='records'))
