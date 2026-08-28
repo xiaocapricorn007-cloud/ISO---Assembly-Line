@@ -25,7 +25,8 @@ class StateconEngine:
             "target_cycle_time": 60.0,
             "min_time_threshold": 58.0, # Aggressively tight: Too early
             "max_time_threshold": 65.0, # Aggressively tight: Too late (bottleneck)
-            "structural_efficiency": 0.90
+            "structural_efficiency": 0.90,
+            "conveyor_belt_speed": 1.0
         }
 
     def get_global_var(self, key):
