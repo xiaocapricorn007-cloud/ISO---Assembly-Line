@@ -108,11 +108,13 @@
                 <!-- Charts Row (Side by Side) -->
                 <div class="flex flex-row gap-6 flex-1 min-h-[350px]">
                     <!-- Chart Area: Vibration -->
-                    <div class="bg-gray-900 p-5 rounded-xl flex-1 flex flex-col border border-gray-800 relative overflow-hidden shadow-lg">
+                    <div id="chart-panel-vib" class="bg-gray-900 p-5 rounded-xl flex-1 flex flex-col border border-gray-800 relative overflow-hidden shadow-lg transition-all duration-300" style="flex: 1 1 0%;">
                         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-indigo-500"></div>
                         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex justify-between items-center">
-                            <span>Vibration Telemetry</span>
-                            <span id="current-node" class="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded text-xs">None</span>
+                            <span class="flex items-center gap-2">Vibration Telemetry <span id="current-node" class="text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded text-xs ml-2">None</span></span>
+                            <button onclick="toggleChartSize('vib')" class="text-gray-500 hover:text-white bg-gray-800 p-1.5 rounded border border-gray-700 hover:bg-gray-700 transition-colors" title="Expand/Shrink">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                            </button>
                         </h3>
                         <div class="relative w-full flex-1">
                             <canvas id="telemetryChart"></canvas>
@@ -120,11 +122,13 @@
                     </div>
 
                     <!-- Chart Area: PLC -->
-                    <div class="bg-gray-900 p-5 rounded-xl flex-1 flex flex-col border border-gray-800 relative overflow-hidden shadow-lg">
+                    <div id="chart-panel-plc" class="bg-gray-900 p-5 rounded-xl flex-1 flex flex-col border border-gray-800 relative overflow-hidden shadow-lg transition-all duration-300" style="flex: 1 1 0%;">
                         <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-teal-500"></div>
                         <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex justify-between items-center">
-                            <span>PLC 3D Coordinates</span>
-                            <span id="current-node-plc" class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded text-xs">None</span>
+                            <span class="flex items-center gap-2">PLC 3D Coordinates <span id="current-node-plc" class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded text-xs ml-2">None</span></span>
+                            <button onclick="toggleChartSize('plc')" class="text-gray-500 hover:text-white bg-gray-800 p-1.5 rounded border border-gray-700 hover:bg-gray-700 transition-colors" title="Expand/Shrink">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                            </button>
                         </h3>
                         <div class="relative w-full flex-1">
                             <canvas id="plcChart"></canvas>
@@ -246,6 +250,35 @@
             } else {
                 svg.style.transform = 'rotate(90deg)';
             }
+        }
+
+        let expandedChart = null;
+        function toggleChartSize(chartType) {
+            const vibPanel = document.getElementById('chart-panel-vib');
+            const plcPanel = document.getElementById('chart-panel-plc');
+            
+            if (expandedChart === chartType) {
+                // Reset to 50/50
+                vibPanel.style.flex = "1 1 0%";
+                plcPanel.style.flex = "1 1 0%";
+                expandedChart = null;
+            } else if (chartType === 'vib') {
+                // Expand Vib
+                vibPanel.style.flex = "3 1 0%";
+                plcPanel.style.flex = "1 1 0%";
+                expandedChart = 'vib';
+            } else if (chartType === 'plc') {
+                // Expand PLC
+                vibPanel.style.flex = "1 1 0%";
+                plcPanel.style.flex = "3 1 0%";
+                expandedChart = 'plc';
+            }
+            
+            // Inform chart.js to resize immediately
+            setTimeout(() => {
+                if (chartInstance) chartInstance.resize();
+                if (plcChartInstance) plcChartInstance.resize();
+            }, 300);
         }
 
         function selectNode(nodeId) {
