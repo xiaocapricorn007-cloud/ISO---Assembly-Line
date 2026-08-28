@@ -3,9 +3,14 @@ import sqlite3
 import pandas as pd
 import json
 import os
+import logging
 from db import get_connection
 
 app = Flask(__name__)
+
+# Suppress Werkzeug HTTP request logging (the continuous GET prints)
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 
 TOPOLOGY = {
     'Station_A': 3, 'Station_B': 2, 'Station_C_Dark': 5,
