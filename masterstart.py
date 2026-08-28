@@ -15,6 +15,70 @@ def stream_output(pipe, prefix):
             except Exception:
                 pass
 
+def print_ml_evaluation():
+    import sqlite3
+    import pandas as pd
+    try:
+        from sklearn.metrics import roc_auc_score, average_precision_score, f1_score, confusion_matrix
+    except ImportError:
+        print("\n[EVAL] scikit-learn is not installed. Run 'pip install scikit-learn' to view advanced metrics.")
+        return
+
+    try:
+        conn = sqlite3.connect("factory_state.db")
+        df = pd.read_sql("SELECT * FROM ml_eval_logs", conn)
+        conn.close()
+        
+        if df.empty:
+            print("\n[EVAL] No ML evaluation data collected yet.")
+            return
+
+        print("\n===========================================")
+        print("     I-DENDEF ML EVALUATION METRICS        ")
+        print("===========================================")
+
+        # --- VIBRATION EVALUATION ---
+        print("\n[ VIBRATION TCN-AE MODEL ]")
+        y_true_vib = df['anomaly_type'].isin(['Bearing Degradation', 'Catastrophic Collision']).astype(int)
+        y_pred_vib = df['defect_vib'].astype(int)
+        y_score_vib = df['vib_mse']
+        
+        if len(y_true_vib.unique()) > 1:
+            roc_auc_v = roc_auc_score(y_true_vib, y_score_vib)
+            pr_auc_v = average_precision_score(y_true_vib, y_score_vib)
+            f1_v = f1_score(y_true_vib, y_pred_vib)
+            tn, fp, fn, tp = confusion_matrix(y_true_vib, y_pred_vib).ravel()
+            
+            print(f"ROC-AUC: {roc_auc_v:.4f}  |  PR-AUC: {pr_auc_v:.4f}  |  F1-Score: {f1_v:.4f}")
+            print(f"True Positives (Caught): {tp}  |  False Negatives (Unnoticed): {fn}")
+            print(f"True Negatives (Ideal):  {tn}  |  False Positives (False Alarms): {fp}")
+            print(f"Avg MSE (Normal): {y_score_vib[y_true_vib==0].mean():.4f} | Avg MSE (Anomaly): {y_score_vib[y_true_vib==1].mean():.4f}")
+        else:
+            print("Not enough varied data to compute AUC (need both normal and anomalies).")
+
+        # --- PLC EVALUATION ---
+        print("\n[ PLC 3D COORDINATE TCN-AE MODEL ]")
+        y_true_plc = df['anomaly_type'].isin(['Tool Miscalibration', 'Catastrophic Collision']).astype(int)
+        y_pred_plc = df['defect_plc'].astype(int)
+        y_score_plc = df['plc_mse']
+
+        if len(y_true_plc.unique()) > 1:
+            roc_auc_p = roc_auc_score(y_true_plc, y_score_plc)
+            pr_auc_p = average_precision_score(y_true_plc, y_score_plc)
+            f1_p = f1_score(y_true_plc, y_pred_plc)
+            tn, fp, fn, tp = confusion_matrix(y_true_plc, y_pred_plc).ravel()
+            
+            print(f"ROC-AUC: {roc_auc_p:.4f}  |  PR-AUC: {pr_auc_p:.4f}  |  F1-Score: {f1_p:.4f}")
+            print(f"True Positives (Caught): {tp}  |  False Negatives (Unnoticed): {fn}")
+            print(f"True Negatives (Ideal):  {tn}  |  False Positives (False Alarms): {fp}")
+            print(f"Avg MSE (Normal): {y_score_plc[y_true_plc==0].mean():.4f} | Avg MSE (Anomaly): {y_score_plc[y_true_plc==1].mean():.4f}")
+        else:
+            print("Not enough varied data to compute AUC (need both normal and anomalies).")
+            
+        print("===========================================\n")
+    except Exception as e:
+        print(f"\n[EVAL] Could not compute metrics: {e}")
+
 def main():
     print("===========================================")
     print(" ISO DIGITAL TWIN - MASTER STARTUP SCRIPT  ")
@@ -76,6 +140,9 @@ def main():
                 p.terminate()
                 p.wait(timeout=3)
         print("[MASTER] ISO Digital Twin safely shut down.")
+        
+        # 6. Print ML Evaluation Metrics
+        print_ml_evaluation()
 
 if __name__ == "__main__":
     main()

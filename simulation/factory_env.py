@@ -133,7 +133,7 @@ class FactorySimulation:
 
             # 3. I-DENDEF Check
             vib, plc_series = self.generate_synthetic_telemetry(machine_id, anomaly_type)
-            is_defect, reasons = self.idendef.evaluate_station(machine_id, vib, plc_series)
+            is_defect, reasons, vib_mse, plc_mse = self.idendef.evaluate_station(machine_id, vib, plc_series)
             
             # Extract independent flags strictly from ML model predictions (NOT from the simulation ground truth)
             defect_vib = any("Vib-TCN" in r for r in reasons)
@@ -154,6 +154,13 @@ class FactorySimulation:
             INSERT INTO plc_logs (timestamp, station_id, plc_x, plc_y, plc_z, is_anomaly)
             VALUES (?, ?, ?, ?, ?, ?)
             ''', (curr_time, machine_id, json.dumps(plc_series[0]), json.dumps(plc_series[1]), json.dumps(plc_series[2]), defect_plc))
+            
+            # Log ML Evaluation metrics (Ground Truth vs Prediction)
+            ground_truth_type = anomaly_type if anomaly_type else "Ideal"
+            cursor.execute('''
+            INSERT INTO ml_eval_logs (timestamp, machine_id, anomaly_type, defect_vib, defect_plc, vib_mse, plc_mse)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            ''', (curr_time, machine_id, ground_truth_type, defect_vib, defect_plc, vib_mse, plc_mse))
             
             self.statecon.conn.commit()
             

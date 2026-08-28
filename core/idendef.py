@@ -60,9 +60,9 @@ class VibrationAnomalyModel:
         # If reconstruction error > threshold, it's an anomaly!
         if mse_loss > threshold:
             print(f"[TCN ALERT] Machine {machine_id} Anomaly! Loss: {mse_loss:.4f} > {threshold:.4f}")
-            return True
+            return True, mse_loss
             
-        return False
+        return False, mse_loss
 
 # ---------------------------------------------------------
 # 3. PLC LOGIC CHECK (3D Spatial Coordinate + Time)
@@ -101,7 +101,7 @@ class PLCAnomalyModel:
                 
     def detect(self, machine_id, plc_time_series):
         if machine_id not in self.models:
-            return False 
+            return False, 0.0 
             
         model = self.models[machine_id]
         threshold = self.thresholds[machine_id]
@@ -116,9 +116,9 @@ class PLCAnomalyModel:
             
         if mse_loss > threshold:
             print(f"[PLC ALARM] Machine {machine_id} Anomaly! Loss: {mse_loss:.4f} > {threshold:.4f}")
-            return True
+            return True, mse_loss
             
-        return False
+        return False, mse_loss
 
 # ---------------------------------------------------------
 # MASTER I-DENDEF ENGINE
@@ -129,8 +129,8 @@ class IdendefEngine:
         self.plc_model = PLCAnomalyModel()
         
     def evaluate_station(self, machine_id, vib_500, plc_series):
-        defect_vib = self.vibration_model.detect(machine_id, vib_500)
-        defect_plc = self.plc_model.detect(machine_id, plc_series)
+        defect_vib, vib_mse = self.vibration_model.detect(machine_id, vib_500)
+        defect_plc, plc_mse = self.plc_model.detect(machine_id, plc_series)
         
         is_defect = defect_vib or defect_plc
         
@@ -138,4 +138,4 @@ class IdendefEngine:
         if defect_vib: reasons.append(f"Vib-TCN-{machine_id}")
         if defect_plc: reasons.append(f"PLC-TCN-{machine_id}")
             
-        return is_defect, reasons
+        return is_defect, reasons, vib_mse, plc_mse

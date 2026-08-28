@@ -80,11 +80,27 @@ def init_db():
     )
     ''')
     
+    # ML Evaluation Tracker
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS ml_eval_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TIMESTAMP,
+        machine_id TEXT,
+        anomaly_type TEXT,
+        defect_vib BOOLEAN,
+        defect_plc BOOLEAN,
+        vib_mse REAL,
+        plc_mse REAL
+    )
+    ''')
+    
     # Clear ghost data from previous runs
     cursor.execute('DELETE FROM machines')
     cursor.execute('DELETE FROM telemetry_logs')
+    cursor.execute('DELETE FROM plc_logs')
     cursor.execute('DELETE FROM metrics')
     cursor.execute('DELETE FROM phantom_logs')
+    cursor.execute('DELETE FROM ml_eval_logs')
     conn.commit()
     
     conn.close()
