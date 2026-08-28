@@ -28,7 +28,7 @@ def generate_robotic_kinematics(L1, L2, seq_len):
     
     return x, y, z
 
-def generate_plc_dataset(L1, L2, num_samples=1000, seq_len=400):
+def generate_plc_dataset(L1, L2, num_samples=3000, seq_len=400):
     data = []
     for _ in range(num_samples):
         x, y, z = generate_robotic_kinematics(L1, L2, seq_len)
@@ -46,27 +46,31 @@ def generate_plc_dataset(L1, L2, num_samples=1000, seq_len=400):
 
 def train_plc_model(machine_id, L1, L2, seq_len):
     print(f"--- Training PLC TCN for Machine: {machine_id} | seq_len: {seq_len} ---")
-    train_data = generate_plc_dataset(L1, L2, seq_len=seq_len)
+    train_data = generate_plc_dataset(L1, L2, seq_len=seq_len, num_samples=3000)
     
     model = PLC_TCNAutoEncoder(seq_len=seq_len)
     criterion = nn.MSELoss()
-    optimizer = optim.Adam(model.parameters(), lr=0.01)
+    optimizer = optim.Adam(model.parameters(), lr=0.005)
     
     model.train()
-    for epoch in range(15):
+    for epoch in range(60):
         optimizer.zero_grad()
         output = model(train_data)
         loss = criterion(output, train_data)
         loss.backward()
         optimizer.step()
-        if epoch % 5 == 0:
+        if epoch % 10 == 0:
             print(f"Epoch {epoch} | Loss: {loss.item():.4f}")
             
     model.eval()
     with torch.no_grad():
         reconstructions = model(train_data)
         losses = torch.mean((reconstructions - train_data)**2, dim=(1, 2)) 
-        threshold = losses.max().item() * 1.5 
+        
+        # Robust threshold using Z-score (mean + 4 standard deviations)
+        mean_loss = losses.mean().item()
+        std_loss = losses.std().item()
+        threshold = mean_loss + 4.0 * std_loss
         
     print(f"[OK] Trained {machine_id}. Anomaly Threshold Set: {threshold:.4f}\n")
     

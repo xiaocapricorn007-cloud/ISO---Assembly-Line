@@ -72,10 +72,13 @@ class FactorySimulation:
         z += np.random.normal(0, 1.0, seq_len)
         
         if anomaly_type == "Tool Miscalibration":
-            # Slow spatial drift over time
-            drift = np.linspace(0, 30.0, seq_len)
+            # Progressive spatial drift + sudden mechanical slippage mid-cycle
+            drift = np.linspace(0, 45.0, seq_len)
             x += drift
             y -= drift
+            # Slippage jump
+            mid = seq_len // 2
+            z[mid:] -= 30.0
         elif anomaly_type == "Catastrophic Collision":
             # Massive structural deviation
             x += np.random.normal(50.0, 10.0, seq_len)
