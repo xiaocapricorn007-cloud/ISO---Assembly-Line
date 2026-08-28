@@ -6,7 +6,9 @@ from datetime import datetime
 DB_PATH = os.path.join(os.path.dirname(__file__), "factory_state.db")
 
 def get_connection():
-    return sqlite3.connect(DB_PATH, check_same_thread=False)
+    conn = sqlite3.connect(DB_PATH, check_same_thread=False, timeout=15)
+    conn.execute('PRAGMA journal_mode=WAL;')
+    return conn
 
 def init_db():
     conn = get_connection()
