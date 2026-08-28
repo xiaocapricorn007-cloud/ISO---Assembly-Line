@@ -54,7 +54,7 @@ class StateconEngine:
             "Station_A": {"part_id": "Sheet_Metal", "qty_per_car": 1, "on_hand": 500},
             "Station_B": {"part_id": "Welding_Wire", "qty_per_car": 1, "on_hand": 500},
             "Station_C_Dark": {"part_id": "Paint_Gallons", "qty_per_car": 2, "on_hand": 1000},
-            "Station_D": {"part_id": "Engine_Block", "qty_per_car": 1, "on_hand": 500},
+            "Station_D": {"part_id": "Engine_Block", "qty_per_car": 1, "on_hand": 5}, # Deliberately low to trigger starvation!
             "Station_E": {"part_id": "Tires", "qty_per_car": 4, "on_hand": 2000}
         }
         
@@ -105,6 +105,17 @@ class StateconEngine:
             
             return True
         return False # Starvation!
+        
+    def replenish_inventory(self, station_id, amount):
+        """Simulates a forklift arriving to drop off stock."""
+        inv = self.bom_inventory.get(station_id)
+        if inv:
+            inv["on_hand"] += amount
+            cursor = self.conn.cursor()
+            cursor.execute('''
+            UPDATE inventory SET on_hand = ? WHERE station_id = ?
+            ''', (inv["on_hand"], station_id))
+            self.conn.commit()
         
     def update_machine_state(self, station_id, status, current_cycle_time):
         cursor = self.conn.cursor()

@@ -151,7 +151,9 @@ class FactorySimulation:
             if not self.statecon.consume_inventory(station_id):
                 print(f"[{machine_id}] BOM STARVATION! Waiting for {station_id} materials.")
                 self.statecon.update_machine_state(machine_id, 'STARVED', 0.0)
-                yield self.env.timeout(10.0) # Simulating emergency replenishment
+                yield self.env.timeout(10.0) # Simulating emergency replenishment (Forklift transit)
+                print(f"[{machine_id}] FORKLIFT ARRIVED! Replenishing 100 units.")
+                self.statecon.replenish_inventory(station_id, 100)
                 self.statecon.consume_inventory(station_id)
             
             # Simulate Work using real architectural cycle times

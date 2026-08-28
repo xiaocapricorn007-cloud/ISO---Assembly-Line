@@ -177,26 +177,31 @@
                         <div class="relative z-10 flex flex-col items-center" id="flow-Station_A">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_A">A</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pressing</span>
+                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Station_A">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Station_A">--</span></div>
                         </div>
                         
                         <div class="relative z-10 flex flex-col items-center" id="flow-Station_B">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_B">B</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Welding</span>
+                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Station_B">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Station_B">--</span></div>
                         </div>
                         
                         <div class="relative z-10 flex flex-col items-center" id="flow-Station_C_Dark">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_C_Dark">C</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Painting</span>
+                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Station_C_Dark">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Station_C_Dark">--</span></div>
                         </div>
 
                         <div class="relative z-10 flex flex-col items-center" id="flow-Station_D">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_D">D</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">PowerTrain</span>
+                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Station_D">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Station_D">--</span></div>
                         </div>
                         
                         <div class="relative z-10 flex flex-col items-center" id="flow-Station_E">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Station_E">E</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Final Assembly</span>
+                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Station_E">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Station_E">--</span></div>
                         </div>
                     </div>
                 </div>
@@ -610,6 +615,32 @@
             } catch (e) {}
         }
 
+        async function fetchInventory() {
+            try {
+                const res = await fetch('/api/inventory');
+                const data = await res.json();
+                
+                for (const stationId in data) {
+                    const inv = data[stationId];
+                    const nameEl = document.getElementById('inv-name-' + stationId);
+                    const qtyEl = document.getElementById('inv-qty-' + stationId);
+                    if (nameEl && qtyEl) {
+                        nameEl.innerText = inv.part_id.replace('_', ' ');
+                        qtyEl.innerText = inv.on_hand;
+                        
+                        // Flash red if starving
+                        if (inv.on_hand <= 0) {
+                            qtyEl.classList.replace('text-cyan-500', 'text-rose-500');
+                            qtyEl.classList.add('animate-pulse');
+                        } else {
+                            qtyEl.classList.replace('text-rose-500', 'text-cyan-500');
+                            qtyEl.classList.remove('animate-pulse');
+                        }
+                    }
+                }
+            } catch (e) {}
+        }
+
         initChart();
         
         // Wait 3 seconds to let backend stabilize and clear ghost rows
@@ -618,10 +649,12 @@
             setTimeout(() => document.getElementById('startup-overlay').classList.add('hidden'), 500);
             
             fetchState();
+            fetchInventory();
             startFakeFlowAnimation();
             fetchTelemetry();
             setInterval(() => {
                 fetchState();
+                fetchInventory();
                 fetchTelemetry();
             }, 1000);
         }, 3000);
