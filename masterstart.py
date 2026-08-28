@@ -106,6 +106,7 @@ def main():
         
         # Wait for Server to boot
         time.sleep(2.0)
+        print("[MASTER] 🌐 Web Dashboard is live! Open http://127.0.0.1:5000/ in your browser.")
         
         # 3. Launch Main Simulation
         print("[MASTER] Launching Factory Simulation...")
