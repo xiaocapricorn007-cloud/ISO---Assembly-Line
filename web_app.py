@@ -88,9 +88,12 @@ def config_manager():
         else:
             df = pd.read_sql("SELECT config_group, key, value FROM system_config", conn)
             conn.close()
-            config_dict = {"global": {}, "station": {}, "buffer": {}}
+            config_dict = {}
             for _, row in df.iterrows():
-                config_dict[row['config_group']][row['key']] = row['value']
+                cg = row['config_group']
+                if cg not in config_dict:
+                    config_dict[cg] = {}
+                config_dict[cg][row['key']] = row['value']
             return jsonify(config_dict)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

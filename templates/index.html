@@ -243,7 +243,7 @@
                                 <button onclick="saveConfig()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors">Apply Changes</button>
                             </div>
                         </div>
-                        <div class="overflow-y-auto max-h-[300px] pr-2 custom-scrollbar flex-1" id="config-container">
+                        <div class="overflow-y-auto max-h-[600px] pr-2 flex-1" id="config-container">
                             <!-- Populated by JS -->
                         </div>
                     </div>
@@ -672,7 +672,9 @@
                 const labels = {
                     'global': 'Global Shift Parameters',
                     'station': 'Station Cycle Times (s)',
-                    'buffer': 'Buffer Capacities (Units)'
+                    'buffer': 'Buffer Capacities (Units)',
+                    'bom_qty': 'BOM Required Per Car',
+                    'bom_onhand': 'Starting BOM Inventory'
                 };
                 
                 for (const group in data) {

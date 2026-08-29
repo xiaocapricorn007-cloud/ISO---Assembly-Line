@@ -74,6 +74,9 @@ class StateconEngine:
             cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('station', k, v))
         for k, v in self.buffer_capacities.items():
             cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('buffer', k, v))
+        for st, inv in self.bom_inventory.items():
+            cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('bom_qty', f"{st}_qty_per_car", inv["qty_per_car"]))
+            cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('bom_onhand', f"{st}_on_hand", inv["on_hand"]))
         self.conn.commit()
 
     def refresh_config(self):
@@ -88,6 +91,22 @@ class StateconEngine:
                 self.station_cycle_times[k] = v
             elif cg == 'buffer':
                 self.buffer_capacities[k] = int(v)
+            elif cg == 'bom_qty':
+                st = k.replace("_qty_per_car", "")
+                if st in self.bom_inventory:
+                    self.bom_inventory[st]["qty_per_car"] = int(v)
+            elif cg == 'bom_onhand':
+                st = k.replace("_on_hand", "")
+                # Only update on_hand if it's vastly different (don't overwrite running simulation decrement unless intended)
+                # Actually, web UI POSTing it means they want to overwrite it!
+                if st in self.bom_inventory:
+                    # check if the web_app value changed from what we have
+                    if self.bom_inventory[st]["on_hand"] != int(v):
+                        # The user might have just typed a new value to replenish
+                        pass 
+                        # Wait, it's safer to only let forklift replenish. We'll leave bom_onhand editable to see initial values, but changes during runtime might clash.
+                        # I'll let them overwrite it.
+                        self.bom_inventory[st]["on_hand"] = int(v)
 
     def get_global_var(self, key):
         """Allows I-DENDEF and O-PTINECK to retrieve parameters."""
