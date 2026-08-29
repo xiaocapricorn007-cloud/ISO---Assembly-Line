@@ -1,6 +1,7 @@
 import simpy
 import random
 import time
+from datetime import datetime
 import torch
 import numpy as np
 from core.statecon import StateconEngine
@@ -185,6 +186,12 @@ class FactorySimulation:
             import json
             cursor = self.statecon.conn.cursor()
             curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
+            
+            if is_defect:
+                cursor.execute('''
+                INSERT INTO global_alerts (timestamp, source, message, severity)
+                VALUES (?, ?, ?, ?)
+                ''', (datetime.now(), "I-DENDEF", f"Anomaly detected at {machine_id}: {', '.join(reasons)}", "CRITICAL"))
             
             cursor.execute('''
             INSERT INTO telemetry_logs (timestamp, station_id, vibration_data, is_anomaly)

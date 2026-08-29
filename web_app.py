@@ -123,6 +123,33 @@ def run_optimizer():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/alerts', methods=['GET', 'POST'])
+def handle_alerts():
+    try:
+        conn = get_connection()
+        if request.method == 'POST':
+            # Mark all as read
+            conn.execute("UPDATE global_alerts SET is_read = 1")
+            conn.commit()
+            conn.close()
+            return jsonify({"status": "success"})
+        else:
+            df = pd.read_sql("SELECT * FROM global_alerts ORDER BY timestamp DESC LIMIT 50", conn)
+            conn.close()
+            alerts = []
+            for _, row in df.iterrows():
+                alerts.append({
+                    "id": row['id'],
+                    "timestamp": row['timestamp'],
+                    "source": row['source'],
+                    "message": row['message'],
+                    "severity": row['severity'],
+                    "is_read": bool(row['is_read'])
+                })
+            return jsonify(alerts)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/telemetry')
 def get_telemetry():
     node = request.args.get('node', '')

@@ -128,6 +128,18 @@ def init_db():
     )
     ''')
     
+    # Global Alerts System
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS global_alerts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp TIMESTAMP,
+        source TEXT,
+        message TEXT,
+        severity TEXT,
+        is_read BOOLEAN DEFAULT 0
+    )
+    ''')
+    
     # Clear ghost data from previous runs
     cursor.execute('DELETE FROM machines')
     cursor.execute('DELETE FROM telemetry_logs')
@@ -138,6 +150,7 @@ def init_db():
     cursor.execute('DELETE FROM parts')
     cursor.execute('DELETE FROM inventory')
     cursor.execute('DELETE FROM system_config')
+    cursor.execute('DELETE FROM global_alerts')
     conn.commit()
     
     conn.close()

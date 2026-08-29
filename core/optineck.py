@@ -91,6 +91,16 @@ class OptineckEngine:
         veto_flag, veto_msg = veto.check_whiplash(projected_time_saved)
         
         if veto_flag:
+            cursor = self.conn.cursor()
+            cursor.execute('''
+                INSERT INTO phantom_logs (timestamp, human_input, plc_truth, action_taken)
+                VALUES (?, ?, ?, ?)
+            ''', (datetime.now(), "O-PTINECK Optimize", f"Projected {projected_time_saved}s saved", f"VETO: {veto_msg}"))
+            cursor.execute('''
+                INSERT INTO global_alerts (timestamp, source, message, severity)
+                VALUES (?, ?, ?, ?)
+            ''', (datetime.now(), "O-PTINECK", f"Optimization Vetoed: {veto_msg}", "WARNING"))
+            self.conn.commit()
             return {"status": "rejected", "reason": veto_msg, "time_saved": projected_time_saved}
             
         # 5. Apply to DB
@@ -105,6 +115,17 @@ class OptineckEngine:
         # Update metrics
         old_dey = (3600.0 / current_bottleneck) * self.statecon.get_global_var("structural_efficiency_eta")
         new_dey = (3600.0 / proposed_bottleneck) * self.statecon.get_global_var("structural_efficiency_eta")
+        
+        cursor.execute('''
+            INSERT INTO phantom_logs (timestamp, human_input, plc_truth, action_taken)
+            VALUES (?, ?, ?, ?)
+        ''', (datetime.now(), "O-PTINECK Optimize", f"Projected {projected_time_saved}s saved", "APPROVED"))
+        
+        cursor.execute('''
+            INSERT INTO global_alerts (timestamp, source, message, severity)
+            VALUES (?, ?, ?, ?)
+        ''', (datetime.now(), "O-PTINECK", f"Line Rebalanced. {projected_time_saved}s saved.", "SUCCESS"))
+        self.conn.commit()
         
         return {
             "status": "applied",

@@ -56,6 +56,27 @@
                 <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Bottleneck</span>
                 <span id="btl-val" class="font-bold text-lg text-gray-200">--</span>
             </div>
+            <div class="h-6 w-px bg-gray-800"></div>
+            
+            <!-- Global Notifier -->
+            <div class="relative">
+                <button onclick="toggleAlerts()" class="relative p-2 text-gray-400 hover:text-white transition-colors bg-gray-800/50 rounded-lg border border-gray-700/50 hover:bg-gray-700">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
+                    <span id="alert-badge" class="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-bold text-white shadow-sm hidden">0</span>
+                </button>
+                
+                <!-- Dropdown Modal -->
+                <div id="alerts-dropdown" class="absolute right-0 mt-3 w-96 max-h-[500px] overflow-y-auto custom-scrollbar bg-gray-900 border border-gray-700 shadow-2xl rounded-xl hidden flex-col z-50 origin-top-right">
+                    <div class="p-4 border-b border-gray-800 flex justify-between items-center sticky top-0 bg-gray-900/95 backdrop-blur z-10">
+                        <h3 class="font-bold text-sm text-gray-300">Global System Alerts</h3>
+                        <button onclick="markAlertsRead()" class="text-[10px] uppercase font-bold tracking-widest text-blue-400 hover:text-blue-300">Mark Read</button>
+                    </div>
+                    <div id="alerts-list" class="flex flex-col divide-y divide-gray-800/50">
+                        <div class="p-8 text-center text-gray-500 text-xs">No alerts to display.</div>
+                    </div>
+                </div>
+            </div>
+            
         </div>
     </header>
 
@@ -301,6 +322,63 @@
                     document.getElementById(`tab-btn-${t}`).className = "px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700";
                 }
             });
+        }
+
+        function toggleAlerts() {
+            const dropdown = document.getElementById('alerts-dropdown');
+            dropdown.classList.toggle('hidden');
+            dropdown.classList.toggle('flex');
+        }
+
+        async function markAlertsRead() {
+            try {
+                await fetch('/api/alerts', { method: 'POST' });
+                fetchAlerts(); // Refresh to clear badge
+            } catch (e) {}
+        }
+
+        async function fetchAlerts() {
+            try {
+                const res = await fetch('/api/alerts');
+                const alerts = await res.json();
+                
+                let unreadCount = alerts.filter(a => !a.is_read).length;
+                const badge = document.getElementById('alert-badge');
+                
+                if (unreadCount > 0) {
+                    badge.innerText = unreadCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+                
+                let html = '';
+                if (alerts.length === 0) {
+                    html = '<div class="p-8 text-center text-gray-500 text-xs">No alerts to display.</div>';
+                } else {
+                    alerts.forEach(a => {
+                        let icon = '<div class="w-2 h-2 rounded-full bg-gray-500"></div>';
+                        if (a.severity === 'CRITICAL') icon = '<div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>';
+                        if (a.severity === 'WARNING') icon = '<div class="w-2 h-2 rounded-full bg-amber-500"></div>';
+                        if (a.severity === 'SUCCESS') icon = '<div class="w-2 h-2 rounded-full bg-emerald-500"></div>';
+                        if (a.severity === 'INFO') icon = '<div class="w-2 h-2 rounded-full bg-blue-500"></div>';
+                        
+                        html += `
+                            <div class="p-4 flex gap-3 ${a.is_read ? 'opacity-60' : 'bg-gray-800/30'}">
+                                <div class="mt-1">${icon}</div>
+                                <div class="flex-1">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="text-xs font-bold ${a.is_read ? 'text-gray-400' : 'text-gray-200'}">${a.source}</span>
+                                        <span class="text-[10px] text-gray-500 font-mono">${a.timestamp.split('.')[0]}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-400 leading-snug">${a.message}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                }
+                document.getElementById('alerts-list').innerHTML = html;
+            } catch (e) {}
         }
 
         function initChart() {
@@ -798,11 +876,13 @@
             fetchState();
             fetchInventory();
             fetchConfig();
+            fetchAlerts();
             startFakeFlowAnimation();
             fetchTelemetry();
             setInterval(() => {
                 fetchState();
                 fetchInventory();
+                fetchAlerts();
                 fetchTelemetry();
             }, 1000);
         }, 3000);

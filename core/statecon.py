@@ -19,7 +19,11 @@ class StateconEngine:
         return cls._instance
 
     def _init_state(self):
-        self.conn = get_connection()
+        self.conn = sqlite3.connect(os.path.join(os.path.dirname(__file__), "..", "factory_state.db"), check_same_thread=False, timeout=15)
+        self.conn.execute('PRAGMA journal_mode=WAL;')
+        
+        self.active_starvation_alerts = set() # Track which parts are starved to prevent spamming the DB
+        
         # Global Parameters (Group 1)
         self.global_vars = {
             "shift_quantity_N": 400,
@@ -176,7 +180,16 @@ class StateconEngine:
             
         # First check if ALL parts have enough inventory
         for inv in parts:
+            part_id = inv["part_id"]
             if inv["on_hand"] < inv["qty_per_car"]:
+                if part_id not in self.active_starvation_alerts:
+                    self.active_starvation_alerts.add(part_id)
+                    cursor = self.conn.cursor()
+                    cursor.execute('''
+                    INSERT INTO global_alerts (timestamp, source, message, severity)
+                    VALUES (?, ?, ?, ?)
+                    ''', (datetime.now(), "Inventory", f"STARVATION ALERT: {station_id} is out of {part_id}!", "CRITICAL"))
+                    self.conn.commit()
                 return False # Starvation!
                 
         # If we reach here, we have enough of everything. Consume it.
@@ -199,11 +212,20 @@ class StateconEngine:
         if parts:
             cursor = self.conn.cursor()
             for inv in parts:
+                part_id = inv["part_id"]
                 # Proportional replenishment: a "pallet" contains enough parts for 'amount' cars
                 inv["on_hand"] += (amount * inv["qty_per_car"])
                 cursor.execute('''
                 UPDATE inventory SET on_hand = ? WHERE station_id = ? AND part_id = ?
-                ''', (inv["on_hand"], station_id, inv["part_id"]))
+                ''', (inv["on_hand"], station_id, part_id))
+                
+                # Clear active alert if replenished
+                if inv["on_hand"] >= inv["qty_per_car"] and part_id in self.active_starvation_alerts:
+                    self.active_starvation_alerts.remove(part_id)
+                    cursor.execute('''
+                    INSERT INTO global_alerts (timestamp, source, message, severity)
+                    VALUES (?, ?, ?, ?)
+                    ''', (datetime.now(), "Inventory", f"Replenished {part_id} at {station_id}.", "INFO"))
             self.conn.commit()
         
     def update_machine_state(self, station_id, status, current_cycle_time):
