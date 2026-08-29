@@ -41,6 +41,7 @@
             <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm">Dashboard</button>
             <button onclick="switchTab('statecon')" id="tab-btn-statecon" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">S-TATECON</button>
             <button onclick="switchTab('inventory')" id="tab-btn-inventory" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">Inventory</button>
+            <button onclick="switchTab('optineck')" id="tab-btn-optineck" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">O-PTINECK</button>
         </div>
         
         <div class="flex gap-6 items-center">
@@ -259,9 +260,6 @@
                                 System Configuration
                             </h3>
                             <div class="flex gap-2">
-                                <button onclick="runOptimizer()" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded shadow transition-colors flex items-center gap-1">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> O-PTINECK GA
-                                </button>
                                 <button onclick="saveConfig()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors">Apply Changes</button>
                             </div>
                         </div>
@@ -294,6 +292,38 @@
                                 <!-- Populated by JS -->
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- O-PTINECK TAB (Hidden by default) -->
+            <div id="tab-optineck" class="hidden flex-col flex-1 gap-5">
+                <div class="bg-gray-900/60 p-8 rounded-xl border border-emerald-900/40 shadow-lg flex flex-col items-center justify-center flex-1 relative overflow-hidden">
+                    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-gray-900/10 to-transparent pointer-events-none"></div>
+                    
+                    <div class="relative z-10 text-center max-w-2xl">
+                        <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
+                            <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-100 mb-2">O-PTINECK Genetic Algorithm</h2>
+                        <p class="text-gray-400 mb-8 leading-relaxed">O-PTINECK runs a highly constrained stochastic line-balancing heuristic. It intelligently reallocates elemental workstation tasks across the assembly line to minimize the system bottleneck and maximize Dynamic Equilibrium Yield (DEY), subject to the Veto Engine's switching penalty constraints.</p>
+                        
+                        <div class="grid grid-cols-2 gap-4 mb-10 text-left">
+                            <div class="bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg">
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Current Bottleneck</span>
+                                <span class="font-mono text-2xl text-rose-400" id="optineck-btl-val">--</span>
+                            </div>
+                            <div class="bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg">
+                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Current DEY</span>
+                                <span class="font-mono text-2xl text-emerald-400" id="optineck-dey-val">--</span>
+                            </div>
+                        </div>
+
+                        <button onclick="runOptimizer()" class="group relative px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center gap-3 mx-auto overflow-hidden">
+                            <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                            <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                            <span class="relative z-10 tracking-wider">EXECUTE OPTIMIZATION SEQUENCE</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -464,6 +494,11 @@
                 
                 document.getElementById('dey-val').innerText = data.dey.toFixed(2);
                 document.getElementById('btl-val').innerText = data.bottleneck;
+                
+                if (document.getElementById('optineck-dey-val')) {
+                    document.getElementById('optineck-dey-val').innerText = data.dey.toFixed(2);
+                    document.getElementById('optineck-btl-val').innerText = data.bottleneck + 's';
+                }
 
                 let tableHtml = '';
                 let activeAlarms = [];
