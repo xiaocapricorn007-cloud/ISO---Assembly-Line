@@ -49,33 +49,52 @@ class StateconEngine:
             "Buffer_PowerTrain_FinalAssembly": 5
         }
         
-        # Single-Model BOM & Inventory (Group 5)
         self.bom_inventory = {
             "Pressing": [
-                {"part_id": "Steel_Coils", "qty_per_car": 1, "on_hand": 500},
-                {"part_id": "Stamped_Body_Panels", "qty_per_car": 4, "on_hand": 2000},
-                {"part_id": "Structural_Frame_Rails", "qty_per_car": 2, "on_hand": 1000}
+                {"part_id": "Steel_Coils", "qty_per_car": 1, "on_hand": 500, "category": "Raw Materials & Body Components"},
+                {"part_id": "Stamped_Body_Panels", "qty_per_car": 4, "on_hand": 2000, "category": "Raw Materials & Body Components"},
+                {"part_id": "Structural_Frame_Rails", "qty_per_car": 2, "on_hand": 1000, "category": "Raw Materials & Body Components"},
+                {"part_id": "Acoustic_Dampening_Pads", "qty_per_car": 6, "on_hand": 3000, "category": "Raw Materials & Body Components"}
             ],
             "Welding": [
-                {"part_id": "Welding_Wire", "qty_per_car": 5, "on_hand": 2500},
-                {"part_id": "Structural_Adhesives", "qty_per_car": 2, "on_hand": 1000},
-                {"part_id": "Rivets_and_Fasteners", "qty_per_car": 50, "on_hand": 20000}
+                {"part_id": "Welding_Wire_and_Gases", "qty_per_car": 5, "on_hand": 2500, "category": "Consumable Fasteners & Joining"},
+                {"part_id": "Structural_Adhesives", "qty_per_car": 2, "on_hand": 1000, "category": "Consumable Fasteners & Joining"},
+                {"part_id": "Rivets_and_Clinches", "qty_per_car": 50, "on_hand": 25000, "category": "Consumable Fasteners & Joining"},
+                {"part_id": "Bolts_and_Nuts", "qty_per_car": 120, "on_hand": 60000, "category": "Consumable Fasteners & Joining"}
             ],
             "Painting": [
-                {"part_id": "E_Coat_Resin", "qty_per_car": 1, "on_hand": 500},
-                {"part_id": "Basecoat_Paint", "qty_per_car": 2, "on_hand": 1000},
-                {"part_id": "Clearcoat", "qty_per_car": 1, "on_hand": 500}
+                {"part_id": "Pre-treatment_Chemicals", "qty_per_car": 1, "on_hand": 500, "category": "Paint & Coating Consumables"},
+                {"part_id": "E-coat_Resin", "qty_per_car": 1, "on_hand": 500, "category": "Paint & Coating Consumables"},
+                {"part_id": "Primers_and_Basecoats", "qty_per_car": 2, "on_hand": 1000, "category": "Paint & Coating Consumables"},
+                {"part_id": "Paint_Thinners_and_Solvents", "qty_per_car": 1, "on_hand": 500, "category": "Paint & Coating Consumables"},
+                {"part_id": "Masking_Tapes", "qty_per_car": 3, "on_hand": 1500, "category": "Paint & Coating Consumables"},
+                {"part_id": "Cavity_Wax", "qty_per_car": 1, "on_hand": 500, "category": "Paint & Coating Consumables"}
             ],
             "PowerTrain": [
-                {"part_id": "Engine_Assemblies", "qty_per_car": 1, "on_hand": 5}, # Deliberately low to trigger starvation!
-                {"part_id": "Transmissions", "qty_per_car": 1, "on_hand": 500},
-                {"part_id": "Suspension_Struts", "qty_per_car": 4, "on_hand": 2000}
+                {"part_id": "Engine_Assemblies", "qty_per_car": 1, "on_hand": 5, "category": "Powertrain & Mechanical Components"},
+                {"part_id": "Transmissions", "qty_per_car": 1, "on_hand": 500, "category": "Powertrain & Mechanical Components"},
+                {"part_id": "High-voltage_Battery_Packs", "qty_per_car": 1, "on_hand": 500, "category": "Powertrain & Mechanical Components"},
+                {"part_id": "Exhaust_Systems", "qty_per_car": 1, "on_hand": 500, "category": "Powertrain & Mechanical Components"},
+                {"part_id": "Drive_Shafts", "qty_per_car": 2, "on_hand": 1000, "category": "Powertrain & Mechanical Components"},
+                {"part_id": "Suspension_Components", "qty_per_car": 4, "on_hand": 2000, "category": "Powertrain & Mechanical Components"},
+                {"part_id": "Brake_Assemblies", "qty_per_car": 4, "on_hand": 2000, "category": "Powertrain & Mechanical Components"}
             ],
             "Final_Assembly": [
-                {"part_id": "Wiring_Harnesses", "qty_per_car": 2, "on_hand": 1000},
-                {"part_id": "Dashboard_Modules", "qty_per_car": 1, "on_hand": 500},
-                {"part_id": "Alloy_Wheels", "qty_per_car": 4, "on_hand": 2000},
-                {"part_id": "Windshield_Glass", "qty_per_car": 1, "on_hand": 500}
+                {"part_id": "Wiring_Harnesses", "qty_per_car": 3, "on_hand": 1500, "category": "Electrical & Electronics"},
+                {"part_id": "Electronic_Control_Units", "qty_per_car": 5, "on_hand": 2500, "category": "Electrical & Electronics"},
+                {"part_id": "Sensors_and_Cameras", "qty_per_car": 10, "on_hand": 5000, "category": "Electrical & Electronics"},
+                {"part_id": "Infotainment_Screens", "qty_per_car": 1, "on_hand": 500, "category": "Electrical & Electronics"},
+                {"part_id": "Headlights_and_Taillights", "qty_per_car": 4, "on_hand": 2000, "category": "Electrical & Electronics"},
+                {"part_id": "Dashboard_Modules", "qty_per_car": 1, "on_hand": 500, "category": "Interior & Exterior Trim"},
+                {"part_id": "Front_and_Rear_Seats", "qty_per_car": 2, "on_hand": 1000, "category": "Interior & Exterior Trim"},
+                {"part_id": "Steering_Wheels", "qty_per_car": 1, "on_hand": 500, "category": "Interior & Exterior Trim"},
+                {"part_id": "Plastic_Trim_Clips", "qty_per_car": 40, "on_hand": 20000, "category": "Consumable Fasteners & Joining"},
+                {"part_id": "Windshields_and_Glass", "qty_per_car": 4, "on_hand": 2000, "category": "Glass & Weatherstripping"},
+                {"part_id": "Rubber_Door_Seals", "qty_per_car": 4, "on_hand": 2000, "category": "Glass & Weatherstripping"},
+                {"part_id": "Operational_Fluids", "qty_per_car": 5, "on_hand": 2500, "category": "Operational Fluids & Gases"},
+                {"part_id": "Alloy_Wheels", "qty_per_car": 4, "on_hand": 2000, "category": "Wheel & Tire Assemblies"},
+                {"part_id": "Tires", "qty_per_car": 4, "on_hand": 2000, "category": "Wheel & Tire Assemblies"},
+                {"part_id": "Packaging_Consumables", "qty_per_car": 10, "on_hand": 5000, "category": "Packaging & Logistics Consumables"}
             ]
         }
         
@@ -84,10 +103,10 @@ class StateconEngine:
         for station_id, parts in self.bom_inventory.items():
             for inv in parts:
                 cursor.execute('''
-                INSERT INTO inventory (station_id, part_id, on_hand)
-                VALUES (?, ?, ?)
+                INSERT INTO inventory (station_id, part_id, category, on_hand)
+                VALUES (?, ?, ?, ?)
                 ON CONFLICT(station_id, part_id) DO UPDATE SET on_hand=excluded.on_hand
-                ''', (station_id, inv["part_id"], inv["on_hand"]))
+                ''', (station_id, inv["part_id"], inv.get("category", "Uncategorized"), inv["on_hand"]))
             
         # Sync Initial Config to DB
         for k, v in self.global_vars.items():
@@ -167,10 +186,10 @@ class StateconEngine:
             
             # Persist to DB for the Web Server to read
             cursor.execute('''
-            INSERT INTO inventory (station_id, part_id, on_hand)
-            VALUES (?, ?, ?)
+            INSERT INTO inventory (station_id, part_id, category, on_hand)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(station_id, part_id) DO UPDATE SET on_hand=excluded.on_hand
-            ''', (station_id, inv["part_id"], inv["on_hand"]))
+            ''', (station_id, inv["part_id"], inv.get("category", "Uncategorized"), inv["on_hand"]))
         self.conn.commit()
         return True
         

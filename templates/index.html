@@ -262,8 +262,9 @@
                         <table class="w-full text-left text-sm">
                             <thead class="bg-gray-800 border-b border-gray-700">
                                 <tr>
-                                    <th class="px-6 py-4 font-semibold text-gray-300">Station / Workcell</th>
+                                    <th class="px-6 py-4 font-semibold text-gray-300">Category</th>
                                     <th class="px-6 py-4 font-semibold text-gray-300">Component Name</th>
+                                    <th class="px-6 py-4 font-semibold text-gray-300">Where It Is Needed</th>
                                     <th class="px-6 py-4 font-semibold text-gray-300 text-center">Qty / Car</th>
                                     <th class="px-6 py-4 font-semibold text-gray-300 text-right">Stock On-Hand</th>
                                 </tr>
@@ -697,8 +698,9 @@
                     
                     tableHtml += `
                         <tr class="hover:bg-gray-800/30 transition-colors">
+                            <td class="px-6 py-4 text-gray-500 font-medium text-xs">${inv.category || 'Uncategorized'}</td>
+                            <td class="px-6 py-4 text-gray-300">${inv.part_id.replace(/_/g, ' ')}</td>
                             <td class="px-6 py-4 flex items-center gap-2">${statusDot} ${stationId.replace(/_/g, ' ')}</td>
-                            <td class="px-6 py-4 text-gray-400">${inv.part_id.replace(/_/g, ' ')}</td>
                             <td class="px-6 py-4 text-center font-mono text-gray-500">${inv.qty_per_car}</td>
                             <td class="px-6 py-4 text-right ${stockClass}">${inv.on_hand}</td>
                         </tr>

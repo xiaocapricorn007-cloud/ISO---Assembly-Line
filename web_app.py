@@ -59,7 +59,7 @@ def get_parts():
 def get_inventory():
     try:
         conn = get_connection()
-        query = "SELECT station_id, part_id, on_hand FROM inventory"
+        query = "SELECT station_id, part_id, category, on_hand FROM inventory"
         df_inv = pd.read_sql(query, conn)
         
         # Also fetch qty_per_car from config to calculate starvation
@@ -80,6 +80,7 @@ def get_inventory():
             inv_dict[composite_key] = {
                 "station_id": st,
                 "part_id": part_id,
+                "category": row['category'],
                 "on_hand": row['on_hand'],
                 "qty_per_car": qty_map.get(composite_key, 1)
             }

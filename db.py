@@ -98,6 +98,7 @@ def init_db():
     CREATE TABLE inventory (
         station_id TEXT,
         part_id TEXT,
+        category TEXT,
         on_hand INTEGER,
         PRIMARY KEY (station_id, part_id)
     )
