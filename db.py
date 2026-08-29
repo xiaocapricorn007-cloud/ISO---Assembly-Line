@@ -93,11 +93,13 @@ def init_db():
     ''')
     
     # Station BOM Inventory Tracking
+    cursor.execute('DROP TABLE IF EXISTS inventory')
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS inventory (
-        station_id TEXT PRIMARY KEY,
+    CREATE TABLE inventory (
+        station_id TEXT,
         part_id TEXT,
-        on_hand INTEGER
+        on_hand INTEGER,
+        PRIMARY KEY (station_id, part_id)
     )
     ''')
     

@@ -51,21 +51,43 @@ class StateconEngine:
         
         # Single-Model BOM & Inventory (Group 5)
         self.bom_inventory = {
-            "Pressing": {"part_id": "Sheet_Metal", "qty_per_car": 1, "on_hand": 500},
-            "Welding": {"part_id": "Welding_Wire", "qty_per_car": 1, "on_hand": 500},
-            "Painting": {"part_id": "Paint_Gallons", "qty_per_car": 2, "on_hand": 1000},
-            "PowerTrain": {"part_id": "Engine_Block", "qty_per_car": 1, "on_hand": 5}, # Deliberately low to trigger starvation!
-            "Final_Assembly": {"part_id": "Tires", "qty_per_car": 4, "on_hand": 2000}
+            "Pressing": [
+                {"part_id": "Steel_Coils", "qty_per_car": 1, "on_hand": 500},
+                {"part_id": "Stamped_Body_Panels", "qty_per_car": 4, "on_hand": 2000},
+                {"part_id": "Structural_Frame_Rails", "qty_per_car": 2, "on_hand": 1000}
+            ],
+            "Welding": [
+                {"part_id": "Welding_Wire", "qty_per_car": 5, "on_hand": 2500},
+                {"part_id": "Structural_Adhesives", "qty_per_car": 2, "on_hand": 1000},
+                {"part_id": "Rivets_and_Fasteners", "qty_per_car": 50, "on_hand": 20000}
+            ],
+            "Painting": [
+                {"part_id": "E_Coat_Resin", "qty_per_car": 1, "on_hand": 500},
+                {"part_id": "Basecoat_Paint", "qty_per_car": 2, "on_hand": 1000},
+                {"part_id": "Clearcoat", "qty_per_car": 1, "on_hand": 500}
+            ],
+            "PowerTrain": [
+                {"part_id": "Engine_Assemblies", "qty_per_car": 1, "on_hand": 5}, # Deliberately low to trigger starvation!
+                {"part_id": "Transmissions", "qty_per_car": 1, "on_hand": 500},
+                {"part_id": "Suspension_Struts", "qty_per_car": 4, "on_hand": 2000}
+            ],
+            "Final_Assembly": [
+                {"part_id": "Wiring_Harnesses", "qty_per_car": 2, "on_hand": 1000},
+                {"part_id": "Dashboard_Modules", "qty_per_car": 1, "on_hand": 500},
+                {"part_id": "Alloy_Wheels", "qty_per_car": 4, "on_hand": 2000},
+                {"part_id": "Windshield_Glass", "qty_per_car": 1, "on_hand": 500}
+            ]
         }
         
         # Sync Initial Inventory to DB
         cursor = self.conn.cursor()
-        for station_id, inv in self.bom_inventory.items():
-            cursor.execute('''
-            INSERT INTO inventory (station_id, part_id, on_hand)
-            VALUES (?, ?, ?)
-            ON CONFLICT(station_id) DO UPDATE SET on_hand=excluded.on_hand
-            ''', (station_id, inv["part_id"], inv["on_hand"]))
+        for station_id, parts in self.bom_inventory.items():
+            for inv in parts:
+                cursor.execute('''
+                INSERT INTO inventory (station_id, part_id, on_hand)
+                VALUES (?, ?, ?)
+                ON CONFLICT(station_id, part_id) DO UPDATE SET on_hand=excluded.on_hand
+                ''', (station_id, inv["part_id"], inv["on_hand"]))
             
         # Sync Initial Config to DB
         for k, v in self.global_vars.items():
@@ -74,9 +96,10 @@ class StateconEngine:
             cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('station', k, v))
         for k, v in self.buffer_capacities.items():
             cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('buffer', k, v))
-        for st, inv in self.bom_inventory.items():
-            cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('bom_qty', f"{st}_qty_per_car", inv["qty_per_car"]))
-            cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('bom_onhand', f"{st}_on_hand", inv["on_hand"]))
+        for st, parts in self.bom_inventory.items():
+            for inv in parts:
+                cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('bom_qty', f"{st}_{inv['part_id']}_qty_per_car", inv["qty_per_car"]))
+                cursor.execute('INSERT INTO system_config (config_group, key, value) VALUES (?, ?, ?)', ('bom_onhand', f"{st}_{inv['part_id']}_on_hand", inv["on_hand"]))
         self.conn.commit()
 
     def refresh_config(self):
@@ -92,21 +115,22 @@ class StateconEngine:
             elif cg == 'buffer':
                 self.buffer_capacities[k] = int(v)
             elif cg == 'bom_qty':
-                st = k.replace("_qty_per_car", "")
-                if st in self.bom_inventory:
-                    self.bom_inventory[st]["qty_per_car"] = int(v)
+                # key format: StationName_PartName_qty_per_car
+                # Actually it's easier to find it by splitting from right.
+                parts = k.split('_')
+                if len(parts) >= 4: # e.g. Final_Assembly_Wiring_Harnesses_qty_per_car or Pressing_Steel_Coils_qty_per_car
+                    # Instead of parsing the string, let's just find the part in the inventory structure that matches
+                    for st, items in self.bom_inventory.items():
+                        for item in items:
+                            expected_key = f"{st}_{item['part_id']}_qty_per_car"
+                            if k == expected_key:
+                                item["qty_per_car"] = int(v)
             elif cg == 'bom_onhand':
-                st = k.replace("_on_hand", "")
-                # Only update on_hand if it's vastly different (don't overwrite running simulation decrement unless intended)
-                # Actually, web UI POSTing it means they want to overwrite it!
-                if st in self.bom_inventory:
-                    # check if the web_app value changed from what we have
-                    if self.bom_inventory[st]["on_hand"] != int(v):
-                        # The user might have just typed a new value to replenish
-                        pass 
-                        # Wait, it's safer to only let forklift replenish. We'll leave bom_onhand editable to see initial values, but changes during runtime might clash.
-                        # I'll let them overwrite it.
-                        self.bom_inventory[st]["on_hand"] = int(v)
+                for st, items in self.bom_inventory.items():
+                        for item in items:
+                            expected_key = f"{st}_{item['part_id']}_on_hand"
+                            if k == expected_key:
+                                item["on_hand"] = int(v)
 
     def get_global_var(self, key):
         """Allows I-DENDEF and O-PTINECK to retrieve parameters."""
@@ -127,34 +151,40 @@ class StateconEngine:
         
     def consume_inventory(self, station_id):
         """Consumes BOM items per car. Returns False if starved."""
-        inv = self.bom_inventory.get(station_id)
-        if not inv:
+        parts = self.bom_inventory.get(station_id)
+        if not parts:
             return True # No BOM requirement
             
-        if inv["on_hand"] >= inv["qty_per_car"]:
+        # First check if ALL parts have enough inventory
+        for inv in parts:
+            if inv["on_hand"] < inv["qty_per_car"]:
+                return False # Starvation!
+                
+        # If we reach here, we have enough of everything. Consume it.
+        cursor = self.conn.cursor()
+        for inv in parts:
             inv["on_hand"] -= inv["qty_per_car"]
             
             # Persist to DB for the Web Server to read
-            cursor = self.conn.cursor()
             cursor.execute('''
             INSERT INTO inventory (station_id, part_id, on_hand)
             VALUES (?, ?, ?)
-            ON CONFLICT(station_id) DO UPDATE SET on_hand=excluded.on_hand
+            ON CONFLICT(station_id, part_id) DO UPDATE SET on_hand=excluded.on_hand
             ''', (station_id, inv["part_id"], inv["on_hand"]))
-            self.conn.commit()
-            
-            return True
-        return False # Starvation!
+        self.conn.commit()
+        return True
         
     def replenish_inventory(self, station_id, amount):
         """Simulates a forklift arriving to drop off stock."""
-        inv = self.bom_inventory.get(station_id)
-        if inv:
-            inv["on_hand"] += amount
+        parts = self.bom_inventory.get(station_id)
+        if parts:
             cursor = self.conn.cursor()
-            cursor.execute('''
-            UPDATE inventory SET on_hand = ? WHERE station_id = ?
-            ''', (inv["on_hand"], station_id))
+            for inv in parts:
+                # Proportional replenishment: a "pallet" contains enough parts for 'amount' cars
+                inv["on_hand"] += (amount * inv["qty_per_car"])
+                cursor.execute('''
+                UPDATE inventory SET on_hand = ? WHERE station_id = ? AND part_id = ?
+                ''', (inv["on_hand"], station_id, inv["part_id"]))
             self.conn.commit()
         
     def update_machine_state(self, station_id, status, current_cycle_time):

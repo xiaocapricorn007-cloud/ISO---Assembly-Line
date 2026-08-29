@@ -68,16 +68,20 @@ def get_inventory():
         
         qty_map = {}
         for _, row in df_cfg.iterrows():
-            st = row['key'].replace("_qty_per_car", "")
-            qty_map[st] = int(row['value'])
+            # row['key'] is e.g. "Pressing_Steel_Coils_qty_per_car"
+            st_part = row['key'].replace("_qty_per_car", "")
+            qty_map[st_part] = int(row['value'])
             
         inv_dict = {}
         for _, row in df_inv.iterrows():
             st = row['station_id']
-            inv_dict[st] = {
-                "part_id": row['part_id'],
+            part_id = row['part_id']
+            composite_key = f"{st}_{part_id}"
+            inv_dict[composite_key] = {
+                "station_id": st,
+                "part_id": part_id,
                 "on_hand": row['on_hand'],
-                "qty_per_car": qty_map.get(st, 1)
+                "qty_per_car": qty_map.get(composite_key, 1)
             }
         return jsonify(inv_dict)
     except Exception as e:

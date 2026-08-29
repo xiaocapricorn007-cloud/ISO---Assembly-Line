@@ -664,34 +664,41 @@
                 const data = await res.json();
                 
                 let tableHtml = '';
+                let updatedStations = new Set();
                 
-                for (const stationId in data) {
-                    const inv = data[stationId];
-                    const nameEl = document.getElementById('inv-name-' + stationId);
-                    const qtyEl = document.getElementById('inv-qty-' + stationId);
-                    if (nameEl && qtyEl) {
-                        nameEl.innerText = inv.part_id.replace('_', ' ');
-                        qtyEl.innerText = inv.on_hand;
-                        
-                        // Flash red if starving
-                        if (inv.on_hand <= 0) {
-                            qtyEl.classList.replace('text-cyan-500', 'text-rose-500');
-                            qtyEl.classList.add('animate-pulse');
-                        } else {
-                            qtyEl.classList.replace('text-rose-500', 'text-cyan-500');
-                            qtyEl.classList.remove('animate-pulse');
+                for (const compositeKey in data) {
+                    const inv = data[compositeKey];
+                    const stationId = inv.station_id;
+                    
+                    // Only update flowchart for the first (primary) part to avoid UI clutter
+                    if (!updatedStations.has(stationId)) {
+                        const nameEl = document.getElementById('inv-name-' + stationId);
+                        const qtyEl = document.getElementById('inv-qty-' + stationId);
+                        if (nameEl && qtyEl) {
+                            nameEl.innerText = inv.part_id.replace(/_/g, ' ');
+                            qtyEl.innerText = inv.on_hand;
+                            
+                            // Flash red if starving
+                            if (inv.on_hand < inv.qty_per_car) {
+                                qtyEl.classList.replace('text-cyan-500', 'text-rose-500');
+                                qtyEl.classList.add('animate-pulse');
+                            } else {
+                                qtyEl.classList.replace('text-rose-500', 'text-cyan-500');
+                                qtyEl.classList.remove('animate-pulse');
+                            }
                         }
+                        updatedStations.add(stationId);
                     }
                     
-                    // Populate new Inventory Tab table
+                    // Populate new Inventory Tab table with ALL components
                     const isStarving = inv.on_hand < inv.qty_per_car;
                     const statusDot = isStarving ? '<div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-emerald-500"></div>';
                     const stockClass = isStarving ? 'text-rose-400 font-bold' : 'text-cyan-400 font-mono';
                     
                     tableHtml += `
                         <tr class="hover:bg-gray-800/30 transition-colors">
-                            <td class="px-6 py-4 flex items-center gap-2">${statusDot} ${stationId.replace('_', ' ')}</td>
-                            <td class="px-6 py-4 text-gray-400">${inv.part_id.replace('_', ' ')}</td>
+                            <td class="px-6 py-4 flex items-center gap-2">${statusDot} ${stationId.replace(/_/g, ' ')}</td>
+                            <td class="px-6 py-4 text-gray-400">${inv.part_id.replace(/_/g, ' ')}</td>
                             <td class="px-6 py-4 text-center font-mono text-gray-500">${inv.qty_per_car}</td>
                             <td class="px-6 py-4 text-right ${stockClass}">${inv.on_hand}</td>
                         </tr>
