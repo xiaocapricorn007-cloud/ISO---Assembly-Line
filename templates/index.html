@@ -38,8 +38,9 @@
         </div>
         
         <div class="flex gap-2 bg-gray-900/50 p-1 rounded-md border border-gray-800">
-            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-4 py-1.5 bg-gray-800 text-white rounded font-medium text-xs shadow-sm transition-all border border-gray-700">Dashboard</button>
-            <button onclick="switchTab('statecon')" id="tab-btn-statecon" class="px-4 py-1.5 text-gray-400 hover:text-white rounded font-medium text-xs transition-all hover:bg-gray-800 border border-transparent">S-TATECON</button>
+            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm">Dashboard</button>
+            <button onclick="switchTab('statecon')" id="tab-btn-statecon" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">S-TATECON</button>
+            <button onclick="switchTab('inventory')" id="tab-btn-inventory" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">Inventory</button>
         </div>
         
         <div class="flex gap-6 items-center">
@@ -250,6 +251,31 @@
                 </div>
             </div>
             
+            <!-- INVENTORY TAB (Hidden by default) -->
+            <div id="tab-inventory" class="hidden flex-col flex-1 gap-5">
+                <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col h-full">
+                    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                        Real-Time BOM Inventory Tracking
+                    </h3>
+                    <div class="overflow-hidden rounded-lg border border-gray-700/50 flex-1">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-gray-800 border-b border-gray-700">
+                                <tr>
+                                    <th class="px-6 py-4 font-semibold text-gray-300">Station / Workcell</th>
+                                    <th class="px-6 py-4 font-semibold text-gray-300">Component Name</th>
+                                    <th class="px-6 py-4 font-semibold text-gray-300 text-center">Qty / Car</th>
+                                    <th class="px-6 py-4 font-semibold text-gray-300 text-right">Stock On-Hand</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-table" class="divide-y divide-gray-800/50">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
         </div>
     </div>
 
@@ -262,23 +288,18 @@
         const plcCtx = document.getElementById('plcChart').getContext('2d');
 
         function switchTab(tab) {
-            if (tab === 'dashboard') {
-                document.getElementById('tab-dashboard').classList.remove('hidden');
-                document.getElementById('tab-dashboard').classList.add('flex');
-                document.getElementById('tab-statecon').classList.add('hidden');
-                document.getElementById('tab-statecon').classList.remove('flex');
-                
-                document.getElementById('tab-btn-dashboard').className = "px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm";
-                document.getElementById('tab-btn-statecon').className = "px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700";
-            } else {
-                document.getElementById('tab-statecon').classList.remove('hidden');
-                document.getElementById('tab-statecon').classList.add('flex');
-                document.getElementById('tab-dashboard').classList.add('hidden');
-                document.getElementById('tab-dashboard').classList.remove('flex');
-                
-                document.getElementById('tab-btn-statecon').className = "px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm";
-                document.getElementById('tab-btn-dashboard').className = "px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700";
-            }
+            const tabs = ['dashboard', 'statecon', 'inventory'];
+            tabs.forEach(t => {
+                if (t === tab) {
+                    document.getElementById(`tab-${t}`).classList.remove('hidden');
+                    document.getElementById(`tab-${t}`).classList.add('flex');
+                    document.getElementById(`tab-btn-${t}`).className = "px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm";
+                } else {
+                    document.getElementById(`tab-${t}`).classList.add('hidden');
+                    document.getElementById(`tab-${t}`).classList.remove('flex');
+                    document.getElementById(`tab-btn-${t}`).className = "px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700";
+                }
+            });
         }
 
         function initChart() {
@@ -642,6 +663,8 @@
                 const res = await fetch('/api/inventory');
                 const data = await res.json();
                 
+                let tableHtml = '';
+                
                 for (const stationId in data) {
                     const inv = data[stationId];
                     const nameEl = document.getElementById('inv-name-' + stationId);
@@ -659,7 +682,23 @@
                             qtyEl.classList.remove('animate-pulse');
                         }
                     }
+                    
+                    // Populate new Inventory Tab table
+                    const isStarving = inv.on_hand < inv.qty_per_car;
+                    const statusDot = isStarving ? '<div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-emerald-500"></div>';
+                    const stockClass = isStarving ? 'text-rose-400 font-bold' : 'text-cyan-400 font-mono';
+                    
+                    tableHtml += `
+                        <tr class="hover:bg-gray-800/30 transition-colors">
+                            <td class="px-6 py-4 flex items-center gap-2">${statusDot} ${stationId.replace('_', ' ')}</td>
+                            <td class="px-6 py-4 text-gray-400">${inv.part_id.replace('_', ' ')}</td>
+                            <td class="px-6 py-4 text-center font-mono text-gray-500">${inv.qty_per_car}</td>
+                            <td class="px-6 py-4 text-right ${stockClass}">${inv.on_hand}</td>
+                        </tr>
+                    `;
                 }
+                
+                document.getElementById('inventory-table').innerHTML = tableHtml;
             } catch (e) {}
         }
 

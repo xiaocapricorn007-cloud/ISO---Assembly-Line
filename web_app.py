@@ -61,17 +61,27 @@ def get_inventory():
         conn = get_connection()
         query = "SELECT station_id, part_id, on_hand FROM inventory"
         df_inv = pd.read_sql(query, conn)
+        
+        # Also fetch qty_per_car from config to calculate starvation
+        df_cfg = pd.read_sql("SELECT key, value FROM system_config WHERE config_group='bom_qty'", conn)
         conn.close()
         
+        qty_map = {}
+        for _, row in df_cfg.iterrows():
+            st = row['key'].replace("_qty_per_car", "")
+            qty_map[st] = int(row['value'])
+            
         inv_dict = {}
         for _, row in df_inv.iterrows():
-            inv_dict[row['station_id']] = {
+            st = row['station_id']
+            inv_dict[st] = {
                 "part_id": row['part_id'],
-                "on_hand": row['on_hand']
+                "on_hand": row['on_hand'],
+                "qty_per_car": qty_map.get(st, 1)
             }
         return jsonify(inv_dict)
     except Exception as e:
-        return jsonify({})
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_manager():
