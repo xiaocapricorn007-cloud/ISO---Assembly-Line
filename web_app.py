@@ -23,6 +23,7 @@ def index():
 
 @app.route('/api/state')
 def get_state():
+    conn = None
     try:
         conn = get_connection()
         
@@ -39,10 +40,11 @@ def get_state():
         df_phantom = pd.read_sql("SELECT * FROM phantom_logs ORDER BY timestamp DESC LIMIT 5", conn)
         logs = df_phantom.to_dict(orient='records')
         
-        conn.close()
         return jsonify({"dey": dey, "bottleneck": bottleneck, "machines": machines, "logs": logs})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/parts')
 def get_parts():
@@ -90,6 +92,7 @@ def get_inventory():
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_manager():
+    conn = None
     try:
         conn = get_connection()
         if request.method == 'POST':
@@ -98,11 +101,9 @@ def config_manager():
             for key, val in data.items():
                 cursor.execute("UPDATE system_config SET value=? WHERE key=?", (float(val), key))
             conn.commit()
-            conn.close()
             return jsonify({"status": "success"})
         else:
             df = pd.read_sql("SELECT config_group, key, value FROM system_config", conn)
-            conn.close()
             config_dict = {}
             for _, row in df.iterrows():
                 cg = row['config_group']
@@ -112,6 +113,8 @@ def config_manager():
             return jsonify(config_dict)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/optimize', methods=['POST'])
 def run_optimizer():
@@ -119,27 +122,26 @@ def run_optimizer():
         from core.optineck import OptineckEngine
         engine = OptineckEngine()
         result = engine.run_genetic_optimizer()
+        engine.conn.close()
         return jsonify(result)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/alerts', methods=['GET', 'POST'])
 def handle_alerts():
+    conn = None
     try:
         conn = get_connection()
         if request.method == 'POST':
             # Mark all as read
             conn.execute("UPDATE global_alerts SET is_read = 1")
             conn.commit()
-            conn.close()
             return jsonify({"status": "success"})
         else:
             df = pd.read_sql("SELECT * FROM global_alerts ORDER BY timestamp DESC LIMIT 50", conn)
-            conn.close()
             alerts = []
             for _, row in df.iterrows():
                 alerts.append({
-                    "id": row['id'],
                     "timestamp": row['timestamp'],
                     "source": row['source'],
                     "message": row['message'],
@@ -149,6 +151,8 @@ def handle_alerts():
             return jsonify(alerts)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/telemetry')
 def get_telemetry():
