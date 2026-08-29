@@ -1,64 +1,55 @@
 class VetoEngine:
     """
     Constraint Verification & Resolution (Veto Engine)
-    Centralizes all veto checks before execution.
+    Step 4 of the O-PTINECK Pipeline.
     """
-    def __init__(self):
-        self.switching_cost_penalty_sec = 300 # 5 minutes
+    def __init__(self, statecon):
+        self.statecon = statecon
+        self.switching_cost_penalty_sec = 300 # Physical transition penalty
 
-    def check_severity_override(self, max_ct, target_ct):
+    def check_severity_override(self, max_ct, TT):
         """
-        Catastrophic Jam Check.
-        If cycle time exceeds target by 2x, it's a catastrophic jam.
-        Action: Throttle Flow / Sub-line Buffering.
+        Phase 4D: Severity Override Bypass
+        If max_ct > TT + 15%, bypass the whiplash cooldown.
         """
-        if max_ct > (target_ct * 2.0):
-            return True, "CATASTROPHIC_JAM_DIVERT_TO_BUFFER"
+        if max_ct > (TT * 1.15):
+            return True, "CATASTROPHIC_JAM_BYPASS_AUTHORIZED"
         return False, "OK"
 
-    def check_material_starvation(self, current_inventory, depletion_rate):
+    def check_material_starvation(self, shift_N):
         """
-        Material Check (Starvation Risk).
-        ds = (OH + OO) / r
+        Phase 4B: The Material Starvation Veto
+        ds = (OH + OO) / r. Checks if any station will run out of stock
+        at the accelerated rate before shift ends.
         """
-        if depletion_rate > 0:
-            days_supply = current_inventory / depletion_rate
-            if days_supply < 1.0: # Less than 1 "shift" of inventory left
-                return True, "STARVATION_RISK_THROTTLE_SPEED"
+        for station_id, parts in self.statecon.bom_inventory.items():
+            for inv in parts:
+                required_for_shift = inv["qty_per_car"] * shift_N
+                # Assuming no On-Order (OO) stock for now, just On-Hand (OH)
+                if inv["on_hand"] < required_for_shift:
+                    return True, f"STARVATION_VETO: {station_id} lacks {inv['part_id']} for accelerated rate."
         return False, "OK"
 
-    def check_whiplash(self, projected_time_saved_sec):
+    def check_whiplash(self, current_bottleneck, proposed_bottleneck, is_severity_override):
         """
-        Whiplash Veto (Cooldown Check).
-        Prevents GA from rebalancing if transition penalty > saved time.
+        Phase 4C: The Human Whiplash & Learning Curve Veto
+        Prohibits rebalance unless delta > 15% OR time saved > penalty.
         """
-        if projected_time_saved_sec < self.switching_cost_penalty_sec:
-            return True, "WHIPLASH_VETO_MOVE_DENIED"
+        if is_severity_override:
+            return False, "OVERRIDE_ACTIVE"
+            
+        improvement_ratio = (current_bottleneck - proposed_bottleneck) / current_bottleneck
+        if improvement_ratio < 0.15:
+            return True, f"WHIPLASH_VETO: Delta ({improvement_ratio*100:.1f}%) < 15% threshold."
+            
         return False, "OK"
 
-    def check_physics(self, expected_velocity, actual_velocity, tolerance=0.1):
+    def check_physics(self, proposed_times, c_baseline):
         """
-        Physics Check (Conveyor Speed v=w/c).
-        Ensures the Twin isn't optimizing against impossible physics.
+        Phase 4A: The Physical Conveyor Veto
+        Ensures cycle times don't violate conveyor pacing constraints.
         """
-        if abs(expected_velocity - actual_velocity) > tolerance:
-            return True, "PHYSICS_VIOLATION_VETO"
+        for st, ct in proposed_times.items():
+            if ct > c_baseline * 1.25: # Soft max bounds for physical space
+                return True, f"PHYSICS_VIOLATION: {st} CT exceeds spatial bounds."
         return False, "OK"
-
-    def evaluate_all(self, max_ct, target_ct, inv, dep_rate, time_saved, exp_v, act_v):
-        """
-        Runs the sequential veto pipeline from the flowchart.
-        """
-        sev_flag, sev_msg = self.check_severity_override(max_ct, target_ct)
-        if sev_flag: return sev_msg
-
-        mat_flag, mat_msg = self.check_material_starvation(inv, dep_rate)
-        if mat_flag: return mat_msg
-
-        whip_flag, whip_msg = self.check_whiplash(time_saved)
-        if whip_flag: return whip_msg
-
-        phys_flag, phys_msg = self.check_physics(exp_v, act_v)
-        if phys_flag: return phys_msg
-
-        return "ALL_CHECKS_PASSED"

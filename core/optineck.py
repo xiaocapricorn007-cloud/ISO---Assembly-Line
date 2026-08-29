@@ -51,59 +51,68 @@ class OptineckEngine:
 
     def run_genetic_optimizer(self):
         """
-        Runs a heuristic Genetic Algorithm to balance the line.
-        Objective: Minimize max(CT_i) (the bottleneck) while keeping total work content W constant.
-        Passes proposed solution to VetoEngine. If approved, applies it to DB.
+        Step 5: Dynamic Rebalancing & DEY Maximization
         """
         from core.veto_engine import VetoEngine
-        veto = VetoEngine()
+        veto = VetoEngine(self.statecon)
         
-        # 1. Fetch current times
+        # Step 1: Prerequisites & Baseline
         self.statecon.refresh_config()
+        shift_N = self.statecon.get_global_var("shift_quantity_N")
+        shift_T = self.statecon.get_global_var("shift_time_T_min") * 60.0
+        c_baseline = shift_T / shift_N if shift_N > 0 else 60.0
+        TT = self.statecon.get_global_var("target_cycle_time")
+        eta = self.statecon.get_global_var("structural_efficiency_eta")
+        
+        # Step 3: Drift Detection
         current_times = self.statecon.station_cycle_times
         stations = list(current_times.keys())
         total_work = sum(current_times.values())
+        n_workers = len(stations)
+        c_bar = total_work / n_workers
         current_bottleneck = max(current_times.values())
         
-        # 2. GA heuristic (for simplicity, targets perfect average balance +/- 0.5s variance)
+        # Phase 3C: Takt Time Synchronization Trigger
+        if current_bottleneck <= TT:
+            return {"status": "rejected", "reason": f"No bottleneck detected. Max CT ({current_bottleneck}s) <= TT ({TT}s).", "time_saved": 0}
+            
+        # Step 5A: Genetic Algorithm (Heuristic)
         import random
-        target_avg = total_work / len(stations)
-        
+        target_avg = total_work / n_workers
         proposed_times = {}
         remaining_work = total_work
         for i, st in enumerate(stations):
             if i == len(stations) - 1:
                 proposed_times[st] = round(remaining_work, 1)
             else:
-                # Add slight random mutation around the average
                 val = round(target_avg + random.uniform(-0.5, 0.5), 1)
                 proposed_times[st] = val
                 remaining_work -= val
                 
         proposed_bottleneck = max(proposed_times.values())
         
-        # 3. Calculate metrics
+        # Calculate Time Saved
         time_saved_per_cycle = current_bottleneck - proposed_bottleneck
-        shift_N = self.statecon.get_global_var("shift_quantity_N")
         projected_time_saved = time_saved_per_cycle * shift_N
         
-        # 4. Check Veto
-        veto_flag, veto_msg = veto.check_whiplash(projected_time_saved)
+        # Step 4: Veto Engine
+        # 4D: Severity Override
+        sev_flag, sev_msg = veto.check_severity_override(current_bottleneck, TT)
+        is_override = sev_flag
         
-        if veto_flag:
-            cursor = self.conn.cursor()
-            cursor.execute('''
-                INSERT INTO phantom_logs (timestamp, human_input, plc_truth, action_taken)
-                VALUES (?, ?, ?, ?)
-            ''', (datetime.now(), "O-PTINECK Optimize", f"Projected {projected_time_saved}s saved", f"VETO: {veto_msg}"))
-            cursor.execute('''
-                INSERT INTO global_alerts (timestamp, source, message, severity)
-                VALUES (?, ?, ?, ?)
-            ''', (datetime.now(), "O-PTINECK", f"Optimization Vetoed: {veto_msg}", "WARNING"))
-            self.conn.commit()
-            return {"status": "rejected", "reason": veto_msg, "time_saved": projected_time_saved}
-            
-        # 5. Apply to DB
+        # 4A: Physics
+        phys_flag, phys_msg = veto.check_physics(proposed_times, c_baseline)
+        if phys_flag: return self._reject_veto(phys_msg, projected_time_saved)
+        
+        # 4B: Material Starvation
+        mat_flag, mat_msg = veto.check_material_starvation(shift_N)
+        if mat_flag: return self._reject_veto(mat_msg, projected_time_saved)
+        
+        # 4C: Whiplash
+        whip_flag, whip_msg = veto.check_whiplash(current_bottleneck, proposed_bottleneck, is_override)
+        if whip_flag: return self._reject_veto(whip_msg, projected_time_saved)
+        
+        # Step 5B & 5C: Apply and Output DEY
         cursor = self.conn.cursor()
         for st, new_ct in proposed_times.items():
             cursor.execute('''
@@ -112,9 +121,8 @@ class OptineckEngine:
             ''', (new_ct, st))
         self.conn.commit()
         
-        # Update metrics
-        old_dey = (3600.0 / current_bottleneck) * self.statecon.get_global_var("structural_efficiency_eta")
-        new_dey = (3600.0 / proposed_bottleneck) * self.statecon.get_global_var("structural_efficiency_eta")
+        old_dey = (3600.0 / current_bottleneck) * eta
+        new_dey = (3600.0 / proposed_bottleneck) * eta
         
         cursor.execute('''
             INSERT INTO phantom_logs (timestamp, human_input, plc_truth, action_taken)
@@ -136,6 +144,19 @@ class OptineckEngine:
             "projected_time_saved_sec": projected_time_saved,
             "new_times": proposed_times
         }
+
+    def _reject_veto(self, reason, time_saved):
+        cursor = self.conn.cursor()
+        cursor.execute('''
+            INSERT INTO phantom_logs (timestamp, human_input, plc_truth, action_taken)
+            VALUES (?, ?, ?, ?)
+        ''', (datetime.now(), "O-PTINECK Optimize", f"Projected {time_saved}s saved", f"VETO: {reason}"))
+        cursor.execute('''
+            INSERT INTO global_alerts (timestamp, source, message, severity)
+            VALUES (?, ?, ?, ?)
+        ''', (datetime.now(), "O-PTINECK", f"Optimization Vetoed: {reason}", "WARNING"))
+        self.conn.commit()
+        return {"status": "rejected", "reason": reason, "time_saved": time_saved}
 
     def log_metrics(self, dey, max_ct, bottleneck, event_log=""):
         cursor = self.conn.cursor()

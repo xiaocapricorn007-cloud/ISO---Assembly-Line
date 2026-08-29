@@ -23,7 +23,7 @@ class FactorySimulation:
         self.statecon = StateconEngine()
         self.idendef = IdendefEngine()
         self.optineck = OptineckEngine()
-        self.veto_engine = VetoEngine()
+        self.veto_engine = VetoEngine(self.statecon)
         
         # Parallel machines per station (using simpy.Resource)
         self.station_resources = {
@@ -223,11 +223,7 @@ class FactorySimulation:
 
             # 4. O-PTINECK & Veto Check
             time_flag = self.optineck.check_time_thresholds(machine_id, actual_ct)
-            veto_result = self.veto_engine.evaluate_all(
-                max_ct=actual_ct, target_ct=target_ct, 
-                inv=self.raw_inventory.level, dep_rate=1.0,
-                time_saved=0, exp_v=1.0, act_v=1.0
-            )
+            veto_result = "N/A"
             
             dey, bottleneck = self.optineck.calculate_dey()
             event_log = f"[{machine_id}] Veto: {veto_result} | I-DENDEF: {reasons}"
