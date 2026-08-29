@@ -1,4 +1,5 @@
 import sqlite3
+import os
 import pandas as pd
 from datetime import datetime
 from db import get_connection
