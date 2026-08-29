@@ -48,17 +48,20 @@ def get_state():
 
 @app.route('/api/parts')
 def get_parts():
+    conn = None
     try:
         conn = get_connection()
         query = "SELECT part_id, current_location, status FROM parts WHERE current_location != 'Completed' AND current_location != 'Buffer_Raw'"
         df_parts = pd.read_sql(query, conn)
-        conn.close()
         return jsonify(df_parts.to_dict(orient='records'))
     except Exception as e:
         return jsonify([])
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/inventory')
 def get_inventory():
+    conn = None
     try:
         conn = get_connection()
         query = "SELECT station_id, part_id, category, on_hand FROM inventory"
@@ -66,7 +69,6 @@ def get_inventory():
         
         # Also fetch qty_per_car from config to calculate starvation
         df_cfg = pd.read_sql("SELECT key, value FROM system_config WHERE config_group='bom_qty'", conn)
-        conn.close()
         
         qty_map = {}
         for _, row in df_cfg.iterrows():
@@ -89,6 +91,8 @@ def get_inventory():
         return jsonify(inv_dict)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/config', methods=['GET', 'POST'])
 def config_manager():
@@ -160,6 +164,7 @@ def get_telemetry():
     if not node:
         return jsonify([])
         
+    conn = None
     try:
         conn = get_connection()
         machines = []
@@ -186,13 +191,15 @@ def get_telemetry():
                     "is_anomaly": bool(df_tel['is_anomaly'].iloc[0]) or bool(df_plc['is_anomaly'].iloc[0]),
                     "timestamp": df_tel['timestamp'].iloc[0]
                 })
-        conn.close()
         return jsonify(data)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if conn: conn.close()
 
 @app.route('/api/alarms')
 def get_alarms():
+    conn = None
     try:
         conn = get_connection()
         # Fetch the last 20 anomalies triggered across any machine from both ML models
@@ -203,10 +210,11 @@ def get_alarms():
         ORDER BY timestamp DESC LIMIT 20
         """
         df_alarms = pd.read_sql(query, conn)
-        conn.close()
         return jsonify(df_alarms.to_dict(orient='records'))
     except Exception as e:
         return jsonify([])
+    finally:
+        if conn: conn.close()
 
 if __name__ == '__main__':
     # Disable reloader so it doesn't double-start in masterstart
