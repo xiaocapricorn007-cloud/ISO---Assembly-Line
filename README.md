@@ -21,14 +21,30 @@ Upon interrupting the master orchestrator (`Ctrl+C`), the simulation dumps a com
 
 ## Getting Started
 
-The Python-based simulation is powered by a modern **Flask + Chart.js / Tailwind CSS** web dashboard, replacing legacy Streamlit/Tkinter interfaces. It enables:
-- 60FPS multi-line overlaid telemetry charts (Vibration and PLC Kinematics).
-- Live global alarms and historical timelogs.
-- A decoupled, CSS-driven **Animated Flowchart** that seamlessly renders multiple staggered stock units physically moving across the factory lines in real-time.
+To run the ISO Digital Twin locally on your machine, follow these steps:
 
-To run the full simulation, orchestrate the startup sequence (Database wiping -> Web Server -> SimPy Environment) natively using the master orchestrator script:
+### 1. Installation
+Clone the repository and install the necessary Python dependencies (including Flask, SimPy, PyTorch, and Scikit-Learn):
 
 ```bash
+git clone https://github.com/xiaocapricorn007-cloud/ISO---Assembly-Line.git
+cd ISO---Assembly-Line
 pip install -r requirements.txt
+```
+
+### 2. Boot the Digital Twin
+The system utilizes a master orchestrator script that safely wipes old database ghost records, boots the Flask web server, and launches the SimPy physical environment concurrently.
+
+```bash
 python masterstart.py
 ```
+
+### 3. Open the Dashboard & Start Simulation
+- Open your browser and navigate to **[http://127.0.0.1:5000/](http://127.0.0.1:5000/)**.
+- The simulation is **paused by default**. 
+- Click the green **START SIMULATION** button in the top-left corner of the web UI to unfreeze the physics engine and begin the live pipeline.
+
+### 4. Evaluate the Models
+Let the cars run through a few cycles to generate live telemetry. When you are finished testing, return to your terminal and safely terminate the program:
+- Press `Ctrl + C`
+- The system will gracefully shut down the servers and output a complete **Scikit-Learn Evaluation Matrix** (ROC-AUC, PR-AUC, F1-Scores) comparing the simulation's ground truth defects to the ML predictions.

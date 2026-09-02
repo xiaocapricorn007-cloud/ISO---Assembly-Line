@@ -234,3 +234,8 @@ Every time a major design decision is finalized or a significant change is commi
 **[2026-09-02] - Final Logic Streamlining (Scrapped Features)**
 - **Scrapped UI Flowchart Inventory Bindings**: Decided to permanently abandon binding the SimPy BOM inventory numbers to the visual flowchart DOM elements (originally planned for Phase 6). The UI flowchart is cleaner without the text clutter, and inventory remains accurately tracked and displayed in the dedicated "Real-Time BOM Inventory Tracking" table below it.
 - **Scrapped 50s Repair Mechanic**: Dropped the legacy 50s sim-time shutdown repair loop (originally planned for Phase 4) in favor of the new V2 rigid pulsed simulation loop. Anomalous machines now naturally delay the global line synchronization (by a smaller multiplier) rather than entering a forced, extended offline state, creating a smoother and more realistic continuous assembly pipeline.
+
+**[2026-09-02] - Documentation & Proposal Preparation**
+- Drafted a comprehensive `Technical_Evaluation.md` breaking down the core stack, synchronized pulsed physics mechanics, 16-machine granular ML pipelines, and Scikit-Learn evaluation matrix.
+- Created placeholder `Business_Proposal.md` pending future requirements.
+- Updated `README.md` to ensure perfectly clean startup instructions for new clones of the repository.
