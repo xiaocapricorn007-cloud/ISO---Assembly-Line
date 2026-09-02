@@ -40,7 +40,11 @@ def get_state():
         df_phantom = pd.read_sql("SELECT * FROM phantom_logs ORDER BY timestamp DESC LIMIT 5", conn)
         logs = df_phantom.to_dict(orient='records')
         
-        return jsonify({"dey": dey, "bottleneck": bottleneck, "machines": machines, "logs": logs})
+        # Units Produced
+        df_units = pd.read_sql("SELECT value FROM system_config WHERE key='units_produced'", conn)
+        units = int(df_units['value'].iloc[0]) if not df_units.empty else 0
+        
+        return jsonify({"dey": dey, "bottleneck": bottleneck, "machines": machines, "logs": logs, "units": units})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -51,7 +55,7 @@ def get_parts():
     conn = None
     try:
         conn = get_connection()
-        query = "SELECT part_id, current_location, status FROM parts WHERE current_location != 'Completed' AND current_location != 'Buffer_Raw'"
+        query = "SELECT part_id, current_location, status FROM parts WHERE current_location != 'Completed' "
         df_parts = pd.read_sql(query, conn)
         return jsonify(df_parts.to_dict(orient='records'))
     except Exception as e:
@@ -59,11 +63,21 @@ def get_parts():
     finally:
         if conn: conn.close()
 
-@app.route('/api/inventory')
+@app.route('/api/inventory', methods=['GET', 'POST'])
 def get_inventory():
     conn = None
     try:
         conn = get_connection()
+        if request.method == 'POST':
+            data = request.json
+            cursor = conn.cursor()
+            for key, val in data.items():
+                st, part = key.split('_', 1)
+                cursor.execute("UPDATE inventory SET on_hand=? WHERE station_id=? AND part_id=?", (int(val), st, part))
+                cursor.execute("UPDATE system_config SET value=? WHERE config_group='bom_onhand' AND key=?", (float(val), f"{key}_on_hand"))
+            conn.commit()
+            return jsonify({"status": "success"})
+        query = "SELECT station_id, part_id, category, on_hand FROM inventory"
         query = "SELECT station_id, part_id, category, on_hand FROM inventory"
         df_inv = pd.read_sql(query, conn)
         
@@ -173,8 +187,31 @@ def get_telemetry():
         else:
             machines = [node]
             
+        # Fetch statuses to check if machines are idle
+        df_status_all = pd.read_sql("SELECT station_id, status FROM machines", conn)
+        status_dict = dict(zip(df_status_all['station_id'], df_status_all['status']))
+        
+        # Check if simulation is paused
+        df_sim = pd.read_sql("SELECT value FROM system_config WHERE key='simulation_running'", conn)
+        sim_running = float(df_sim['value'].iloc[0]) > 0.5 if not df_sim.empty else False
+            
         data = []
         for m_id in machines:
+            status = status_dict.get(m_id)
+            if status == 'IDLE' or status is None or not sim_running:
+                # Machine is dead/idle, hasn't started yet, or simulation is paused -> flatline the data
+                data.append({
+                    "machine_id": m_id,
+                    "vibration": [0.0] * 500,
+                    "plc_x": [0.0] * 200,
+                    "plc_y": [0.0] * 200,
+                    "plc_z": [0.0] * 200,
+                    "is_anomaly": False,
+                    "timestamp": "",
+                    "status": "IDLE"
+                })
+                continue
+
             query = f"SELECT * FROM telemetry_logs WHERE station_id='{m_id}' ORDER BY id DESC LIMIT 1"
             df_tel = pd.read_sql(query, conn)
             
@@ -189,7 +226,8 @@ def get_telemetry():
                     "plc_y": json.loads(df_plc['plc_y'].iloc[0]),
                     "plc_z": json.loads(df_plc['plc_z'].iloc[0]),
                     "is_anomaly": bool(df_tel['is_anomaly'].iloc[0]) or bool(df_plc['is_anomaly'].iloc[0]),
-                    "timestamp": df_tel['timestamp'].iloc[0]
+                    "timestamp": df_tel['timestamp'].iloc[0],
+                    "status": status
                 })
         return jsonify(data)
     except Exception as e:
@@ -213,6 +251,22 @@ def get_alarms():
         return jsonify(df_alarms.to_dict(orient='records'))
     except Exception as e:
         return jsonify([])
+    finally:
+        if conn: conn.close()
+
+@app.route('/api/toggle_sim', methods=['POST'])
+def toggle_sim():
+    conn = None
+    try:
+        data = request.json
+        state = float(data.get('state', 0.0))
+        conn = get_connection()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE system_config SET value=? WHERE key='simulation_running'", (state,))
+        conn.commit()
+        return jsonify({"status": "success", "state": state})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     finally:
         if conn: conn.close()
 

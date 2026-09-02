@@ -4,6 +4,7 @@ import time
 from datetime import datetime
 import torch
 import numpy as np
+import json
 from core.statecon import StateconEngine
 from core.idendef import IdendefEngine
 from core.optineck import OptineckEngine
@@ -25,13 +26,10 @@ class FactorySimulation:
         self.optineck = OptineckEngine()
         self.veto_engine = VetoEngine(self.statecon)
         
-        # Parallel machines per station (using simpy.Resource)
-        self.station_resources = {
-            station: simpy.Resource(env, capacity=count)
-            for station, count in MACHINE_TOPOLOGY.items()
-        }
+
         
         # SimPy Inventory & Buffers
+        self.station_locks = {st: simpy.Resource(env, capacity=1) for st in MACHINE_TOPOLOGY.keys()}
         self.raw_inventory = simpy.Container(env, capacity=1000, init=100) 
         self.buffers = {
             'Buffer_Pressing_Welding': simpy.Store(env, capacity=self.statecon.get_buffer_capacity('Buffer_Pressing_Welding')),
@@ -100,165 +98,198 @@ class FactorySimulation:
         
         return vib.tolist(), plc_series
 
-    def process_part(self, part_id):
-        """A single part flows through all stations."""
-        self.update_part_location(part_id, 'Buffer_Raw')
-        yield self.env.timeout(2.0)
-        
-        # --- STATION A ---
-        yield self.env.process(self.run_machine_cycle('Pressing', part_id, self.raw_inventory, self.buffers['Buffer_Pressing_Welding']))
-        self.update_part_location(part_id, 'Buffer_Pressing_Welding')
-        yield self.env.timeout(3.0) # Transit time on conveyor
-        
-        # --- STATION B ---
-        yield self.env.process(self.run_machine_cycle('Welding', part_id, self.buffers['Buffer_Pressing_Welding'], self.buffers['Buffer_Welding_Painting']))
-        self.update_part_location(part_id, 'Buffer_Welding_Painting')
-        yield self.env.timeout(3.0)
-        
-        # --- STATION C ---
-        yield self.env.process(self.run_machine_cycle('Painting', part_id, self.buffers['Buffer_Welding_Painting'], self.buffers['Buffer_Painting_PowerTrain']))
-        self.update_part_location(part_id, 'Buffer_Painting_PowerTrain')
-        yield self.env.timeout(3.0)
-        
-        # --- STATION D ---
-        yield self.env.process(self.run_machine_cycle('PowerTrain', part_id, self.buffers['Buffer_Painting_PowerTrain'], self.buffers['Buffer_PowerTrain_FinalAssembly']))
-        self.update_part_location(part_id, 'Buffer_PowerTrain_FinalAssembly')
-        yield self.env.timeout(3.0)
-        
-        # --- STATION E ---
-        yield self.env.process(self.run_machine_cycle('Final_Assembly', part_id, self.buffers['Buffer_PowerTrain_FinalAssembly'], None))
-        self.update_part_location(part_id, 'Completed', status="Finished")
 
-    def run_machine_cycle(self, station_id, part_id, upstream, downstream):
-        """Requests a machine in the station, processes, and pushes to downstream."""
-        # 1. Retrieve part
-        if station_id == 'Pressing':
-            yield upstream.get(1) # Get from raw inventory
-        else:
-            _ = yield upstream.get() # Get from buffer
+    def pausable_timeout(self, duration):
+        """Yields in small increments, freezing if the system is paused."""
+        elapsed = 0.0
+        step = 0.1
+        while elapsed < duration:
+            self.statecon.refresh_config()
+            status = self.statecon.get_global_var("simulation_running")
+            if status > 0.5:
+                yield self.env.timeout(step)
+                elapsed += step
+            else:
+                yield self.env.timeout(step)
 
-        # 2. Request an available machine in this station
-        resource = self.station_resources[station_id]
-        with resource.request() as req:
-            yield req
+    def get_transit_time(self):
+        # Enforced strict 5.0s transit time to perfectly sync with CSS animation
+        return 5.0
+
+
+    def master_line_loop(self):
+        # Wait until RUN is pressed before starting the shift
+        while True:
+            self.statecon.refresh_config()
+            if self.statecon.get_global_var("simulation_running") > 0.5:
+                break
+            yield self.env.timeout(0.5)
             
-            machine_num = random.randint(1, MACHINE_TOPOLOGY[station_id])
-            machine_id = f"{station_id}_M{machine_num}"
-            
-            # Record that the part is now actively inside this station
-            self.update_part_location(part_id, station_id)
-            
-            # Check BOM Starvation
-            if not self.statecon.consume_inventory(station_id):
-                print(f"[{machine_id}] BOM STARVATION! Waiting for {station_id} materials.")
-                self.statecon.update_machine_state(machine_id, 'STARVED', 0.0)
-                yield self.env.timeout(10.0) # Simulating emergency replenishment (Forklift transit)
-                print(f"[{machine_id}] FORKLIFT ARRIVED! Replenishing 100 units.")
-                self.statecon.replenish_inventory(station_id, 100)
-                self.statecon.consume_inventory(station_id)
-            
-            # Simulate Work using real architectural cycle times
-            target_ct = self.statecon.get_station_cycle_time(station_id)
-            
-            # Randomly trigger distinct anomaly classes
-            rand_val = random.random()
-            anomaly_type = None
-            if rand_val < 0.02:
-                anomaly_type = "Bearing Degradation"
-            elif rand_val < 0.04:
-                anomaly_type = "Tool Miscalibration"
-            elif rand_val < 0.05:
-                anomaly_type = "Catastrophic Collision"
+        car_idx = 1
+        stations = ['Pressing', 'Welding', 'Painting', 'PowerTrain', 'Final_Assembly']
+        line_state = {st: None for st in stations}
+        finishing_car = None
+        
+        while True:
+            # --- GLOBAL TRANSIT PHASE ---
+            # Set all machines to IDLE exactly during transit phase
+            for st, count in MACHINE_TOPOLOGY.items():
+                for i in range(1, count + 1):
+                    self.statecon.update_machine_state(f"{st}_M{i}", 'IDLE', 0.0)
+                    
+            if finishing_car:
+                self.update_part_location(finishing_car, 'Completed', status="Finished")
                 
-            actual_ct = target_ct * random.uniform(1.5, 2.5) if anomaly_type else target_ct * random.uniform(0.95, 1.05)
-            
-            # Scale simulation timeout so we don't literally wait 60 seconds (15x speedup)
-            yield self.env.timeout(actual_ct / 15.0)
+                # Increment Units Produced
+                self.statecon.refresh_config()
+                units = self.statecon.get_global_var("units_produced") + 1.0
+                self.statecon.set_global_var("units_produced", units)
+                cursor = self.statecon.conn.cursor()
+                cursor.execute("UPDATE system_config SET value=? WHERE key='units_produced'", (units,))
+                self.statecon.conn.commit()
+                finishing_car = None
 
-            # 3. I-DENDEF Check
-            vib, plc_series = self.generate_synthetic_telemetry(machine_id, anomaly_type)
-            is_defect, reasons, vib_mse, plc_mse = self.idendef.evaluate_station(machine_id, vib, plc_series)
-            
-            # Extract independent flags strictly from ML model predictions
-            defect_vib = any("Vib-TCN" in r for r in reasons)
-            defect_plc = any("PLC-TCN" in r for r in reasons)
-            
-            import json
-            cursor = self.statecon.conn.cursor()
-            curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
-            
-            if is_defect:
-                cursor.execute('''
-                INSERT INTO global_alerts (timestamp, source, message, severity)
-                VALUES (?, ?, ?, ?)
-                ''', (datetime.now(), "I-DENDEF", f"Anomaly detected at {machine_id}: {', '.join(reasons)}", "CRITICAL"))
-            
-            cursor.execute('''
-            INSERT INTO telemetry_logs (timestamp, station_id, vibration_data, is_anomaly)
-            VALUES (?, ?, ?, ?)
-            ''', (curr_time, machine_id, json.dumps(vib), defect_vib))
-            
-            cursor.execute('''
-            INSERT INTO plc_logs (timestamp, station_id, plc_x, plc_y, plc_z, is_anomaly)
-            VALUES (?, ?, ?, ?, ?, ?)
-            ''', (curr_time, machine_id, json.dumps(plc_series[0]), json.dumps(plc_series[1]), json.dumps(plc_series[2]), defect_plc))
-            
-            ground_truth_type = anomaly_type if anomaly_type else "Ideal"
-            cursor.execute('''
-            INSERT INTO ml_eval_logs (timestamp, machine_id, anomaly_type, defect_vib, defect_plc, vib_mse, plc_mse)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            ''', (curr_time, machine_id, ground_truth_type, defect_vib, defect_plc, vib_mse, plc_mse))
-            
-            self.statecon.conn.commit()
-            
-            status = 'BROKEN' if is_defect else 'RUNNING'
-            self.statecon.update_machine_state(machine_id, status, actual_ct)
-            
-            # If broken, simulate repair downtime
-            if is_defect:
-                print(f"[{machine_id}] OFFLINE for repair...")
-                yield self.env.timeout(20.0) # Scaled repair time
-                self.statecon.update_machine_state(machine_id, 'RUNNING', actual_ct)
-                print(f"[{machine_id}] REPAIRED. Back online.")
+            if line_state['Final_Assembly']:
+                finishing_car = line_state['Final_Assembly']
+                self.update_part_location(finishing_car, 'Conveyor (To Completed)')
 
-            # 4. O-PTINECK & Veto Check
-            time_flag = self.optineck.check_time_thresholds(machine_id, actual_ct)
-            veto_result = "N/A"
+            # Shift cars forward logically and visually
+            next_state = {st: None for st in stations}
+            for i in range(len(stations) - 1, 0, -1):
+                curr_st = stations[i-1]
+                next_st = stations[i]
+                part = line_state[curr_st]
+                if part:
+                    next_state[next_st] = part
+                    self.update_part_location(part, f'Conveyor (To {next_st})')
             
-            dey, bottleneck = self.optineck.calculate_dey()
-            event_log = f"[{machine_id}] Veto: {veto_result} | I-DENDEF: {reasons}"
-            self.optineck.log_metrics(dey, actual_ct, bottleneck, event_log)
+            # Introduce new car
+            new_car = f"Car{car_idx}"
+            car_idx += 1
+            next_state['Pressing'] = new_car
+            self.update_part_location(new_car, 'Buffer_Raw')
+            
+            # Wait exactly 5s (scaled by conveyor speed) for ALL cars to transit together
+            yield self.env.process(self.pausable_timeout(self.get_transit_time()))
+            
+            # --- GLOBAL PROCESSING PHASE ---
+            line_state = next_state
+            
+            processing_tasks = []
+            for st in stations:
+                part = line_state[st]
+                if part:
+                    self.update_part_location(part, st)
+                    processing_tasks.append(self.env.process(self.run_station_cycle(st, part)))
+                    
+            # Wait for ALL stations to finish processing simultaneously (Bottleneck sync)
+            if processing_tasks:
+                yield simpy.events.AllOf(self.env, processing_tasks)
 
-            # 5. Push to downstream buffer (Will automatically block if Buffer is at B_max!)
-            if downstream:
-                if len(downstream.items) >= downstream.capacity:
-                    print(f"[{machine_id}] BLOCKED! Downstream buffer is full.")
-                    self.statecon.update_machine_state(machine_id, 'BLOCKED', actual_ct)
-                yield downstream.put(part_id)
-                # Once unblocked (or if it wasn't), ensure it's marked running
-                self.statecon.update_machine_state(machine_id, 'RUNNING', actual_ct)
-
-def part_generator(env, sim):
-    """Generates new parts entering the factory continuously based on Takt Time."""
-    part_count = 0
-    while True:
-        sim.statecon.refresh_config()
-        takt_time = sim.statecon.get_global_var("takt_time_TT")
-        scaled_takt = takt_time / 15.0
+    def run_station_cycle(self, station_id, part_id):
+        """Runs ALL machines in the station simultaneously, no locks needed in global transit."""
+        # Check BOM Starvation for the entire station
+        if not self.statecon.consume_inventory(station_id):
+            print(f"[{station_id}] BOM STARVATION! Waiting for {station_id} materials.")
+            self.statecon.update_machine_state(f"{station_id}_M1", 'STARVED', 0.0)
+            yield self.env.process(self.pausable_timeout(10.0)) 
+            print(f"[{station_id}] FORKLIFT ARRIVED! Replenishing 100 units.")
+            self.statecon.replenish_inventory(station_id, 100)
+            self.statecon.consume_inventory(station_id)
         
-        part_count += 1
-        part_id = f"Part_{part_count}"
-        env.process(sim.process_part(part_id))
-        yield env.timeout(scaled_takt)
+        # Run all machines in parallel
+        machine_count = MACHINE_TOPOLOGY[station_id]
+        machine_tasks = []
+        for i in range(1, machine_count + 1):
+            machine_id = f"{station_id}_M{i}"
+            machine_tasks.append(self.env.process(self.machine_task(station_id, machine_id)))
+            
+        yield simpy.events.AllOf(self.env, machine_tasks)
+
+    def machine_task(self, station_id, machine_id):
+        target_ct = self.statecon.get_station_cycle_time(station_id)
+        
+        # Set to RUNNING immediately so UI doesn't hang on IDLE during ML inference
+        self.statecon.update_machine_state(machine_id, 'RUNNING', target_ct)
+        
+        # Randomly trigger distinct anomaly classes
+        rand_val = random.random()
+        anomaly_type = None
+        if rand_val < 0.02:
+            anomaly_type = "Bearing Degradation"
+        elif rand_val < 0.04:
+            anomaly_type = "Tool Miscalibration"
+        elif rand_val < 0.05:
+            anomaly_type = "Catastrophic Collision"
+            
+        actual_ct = target_ct * random.uniform(1.5, 2.5) if anomaly_type else target_ct * random.uniform(0.95, 1.05)
+        
+        # 3. I-DENDEF Check
+        vib, plc_series = self.generate_synthetic_telemetry(machine_id, anomaly_type)
+        is_defect, reasons, vib_mse, plc_mse = self.idendef.evaluate_station(machine_id, vib, plc_series)
+        
+        defect_vib = any("Vib-TCN" in r for r in reasons)
+        defect_plc = any("PLC-TCN" in r for r in reasons)
+        
+        cursor = self.statecon.conn.cursor()
+        curr_time = time.strftime('%Y-%m-%d %H:%M:%S')
+        
+        if is_defect:
+            cursor.execute('''
+            INSERT INTO global_alerts (timestamp, source, message, severity)
+            VALUES (?, ?, ?, ?)
+            ''', (datetime.now(), "I-DENDEF", f"Anomaly detected at {machine_id}: {', '.join(reasons)}", "CRITICAL"))
+        
+        cursor.execute('''
+        INSERT INTO telemetry_logs (timestamp, station_id, vibration_data, is_anomaly)
+        VALUES (?, ?, ?, ?)
+        ''', (curr_time, machine_id, json.dumps(vib), defect_vib))
+        
+        cursor.execute('''
+        INSERT INTO plc_logs (timestamp, station_id, plc_x, plc_y, plc_z, is_anomaly)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ''', (curr_time, machine_id, json.dumps(plc_series[0]), json.dumps(plc_series[1]), json.dumps(plc_series[2]), defect_plc))
+        
+        ground_truth_type = anomaly_type if anomaly_type else "Ideal"
+        cursor.execute('''
+        INSERT INTO ml_eval_logs (timestamp, machine_id, anomaly_type, defect_vib, defect_plc, vib_mse, plc_mse)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (curr_time, machine_id, ground_truth_type, defect_vib, defect_plc, vib_mse, plc_mse))
+        
+        self.statecon.conn.commit()
+        
+        status = 'BROKEN' if is_defect else 'RUNNING'
+        self.statecon.update_machine_state(machine_id, status, actual_ct)
+        
+        # Wait for the physical cycle time so UI can plot the active data
+        yield self.env.process(self.pausable_timeout(actual_ct))
+
+        
+
+
+        # 4. O-PTINECK & Veto Check
+        time_flag = self.optineck.check_time_thresholds(machine_id, actual_ct)
+        veto_result = "N/A"
+        
+        dey, bottleneck = self.optineck.calculate_dey()
+        event_log = f"[{machine_id}] Veto: {veto_result} | I-DENDEF: {reasons}"
+        self.optineck.log_metrics(dey, actual_ct, bottleneck, event_log)
+        
+
 
 def start_simulation():
-    env = simpy.Environment()
+    import simpy.rt
+    env = simpy.rt.RealtimeEnvironment(factor=1.0, strict=False)
     sim = FactorySimulation(env)
     
-    # Start the continuous flow of parts
-    env.process(part_generator(env, sim))
+    env.process(sim.master_line_loop())
         
-    print("Starting V2 SimPy Factory Simulation with Granular Machines...")
+    print("Starting V2 SimPy Factory Simulation with Single Car Test in REAL-TIME...")
+    try:
+        env.run()
+    except Exception as e:
+        print("Simulation error:", e)
+        
+    print("Simulation for Car1 finished. Keeping process alive for GUI...")
     while True:
-        env.step()
-        time.sleep(0.05) 
+        time.sleep(1)

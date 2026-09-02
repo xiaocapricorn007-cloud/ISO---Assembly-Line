@@ -15,7 +15,7 @@ The architecture is divided into three interdependent pillars, governed by a uni
 
 ## Simulation Environment & Evaluation
 
-The underlying environment leverages `SimPy` to model parallel machines with independent cycle times and telemetry streams. It features sequential inter-station buffering (`simpy.Store`), physical raw material inventory (`simpy.Container`), and dynamic repair loops (50s simulation-time shutdowns upon anomaly detection).
+The underlying environment leverages `SimPy` to model parallel machines with independent cycle times and telemetry streams. It features sequential inter-station buffering (`simpy.Store`) and physical raw material inventory (`simpy.Container`), operating on a strict, synchronous pulsed master loop architecture.
 
 Upon interrupting the master orchestrator (`Ctrl+C`), the simulation dumps a comprehensive **Scikit-Learn Evaluation Matrix** (ROC-AUC, PR-AUC, F1-Scores) comparing the hidden simulation Ground Truth anomalies strictly against the independent ML Model predictions.
 

@@ -19,28 +19,33 @@
         ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
     </style>
 </head>
-<body class="bg-[#0f172a] text-gray-200 font-sans antialiased h-screen flex flex-col relative overflow-hidden">
+<body class="bg-[#0a0a0a] text-gray-200 font-sans antialiased h-screen flex flex-col relative overflow-hidden">
 
     <!-- Stabilizing Overlay -->
-    <div id="startup-overlay" class="absolute inset-0 bg-[#0f172a] z-50 flex flex-col items-center justify-center backdrop-blur-sm">
-        <div class="text-3xl font-bold text-blue-400 mb-4 animate-pulse tracking-wide">Initializing Digital Twin...</div>
+    <div id="startup-overlay" class="absolute inset-0 bg-[#0a0a0a] z-50 flex flex-col items-center justify-center backdrop-blur-sm">
+        <div class="text-3xl font-bold text-orange-500 mb-4 animate-pulse tracking-wide">Initializing Digital Twin...</div>
         <div class="text-lg text-gray-400">Stabilizing S-TATECON & I-DENDEF Telemetry Links</div>
-        <div class="mt-8 border-t-4 border-blue-500 w-48 rounded animate-bounce shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
+        <div class="mt-8 border-t-4 border-orange-500 w-48 rounded animate-bounce shadow-[0_0_15px_rgba(59,130,246,0.5)]"></div>
     </div>
 
     <!-- Header -->
     <header class="bg-gray-900/80 backdrop-blur-md border-b border-gray-800 p-4 flex justify-between items-center shadow-sm z-10">
         <div class="flex items-center gap-4">
-            <div class="w-9 h-9 rounded-md bg-blue-600/10 border border-blue-500/30 flex items-center justify-center">
-                <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            <div class="w-9 h-9 rounded-md bg-orange-600/10 border border-orange-500/30 flex items-center justify-center">
+                <svg class="w-5 h-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
             </div>
             <h1 class="text-xl font-bold text-gray-100 tracking-tight">ISO Digital Twin</h1>
+            <!-- RUN/PAUSE BUTTON -->
+            <button id="sim-toggle-btn" onclick="toggleSimulation()" class="ml-4 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs tracking-wider uppercase transition-colors shadow flex items-center gap-2">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                START SIMULATION
+            </button>
+
         </div>
         
         <div class="flex gap-2 bg-gray-900/50 p-1 rounded-md border border-gray-800">
-            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm">Dashboard</button>
+            <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="px-5 py-2 bg-orange-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm">I-DENDEF</button>
             <button onclick="switchTab('statecon')" id="tab-btn-statecon" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">S-TATECON</button>
-            <button onclick="switchTab('inventory')" id="tab-btn-inventory" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">Inventory</button>
             <button onclick="switchTab('optineck')" id="tab-btn-optineck" class="px-5 py-2 text-gray-400 hover:text-white rounded-md font-semibold text-sm transition-all hover:bg-gray-700">O-PTINECK</button>
         </div>
         
@@ -59,6 +64,12 @@
             </div>
             <div class="h-6 w-px bg-gray-800"></div>
             
+            <div class="flex flex-col items-end mr-4">
+                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Units Prod.</span>
+                <span id="units-val" class="font-bold text-lg text-emerald-400">0</span>
+            </div>
+            <div class="h-6 w-px bg-gray-800 mr-2"></div>
+            
             <!-- Global Notifier -->
             <div class="relative">
                 <button onclick="toggleAlerts()" class="relative p-2 text-gray-400 hover:text-white transition-colors bg-gray-800/50 rounded-lg border border-gray-700/50 hover:bg-gray-700">
@@ -70,11 +81,12 @@
                 <div id="alerts-dropdown" class="absolute right-0 mt-3 w-96 max-h-[500px] overflow-y-auto custom-scrollbar bg-gray-900 border border-gray-700 shadow-2xl rounded-xl hidden flex-col z-50 origin-top-right">
                     <div class="p-4 border-b border-gray-800 flex justify-between items-center sticky top-0 bg-gray-900/95 backdrop-blur z-10">
                         <h3 class="font-bold text-sm text-gray-300">Global System Alerts</h3>
-                        <button onclick="markAlertsRead()" class="text-[10px] uppercase font-bold tracking-widest text-blue-400 hover:text-blue-300">Mark Read</button>
+                        <button onclick="markAlertsRead()" class="text-[10px] uppercase font-bold tracking-widest text-orange-500 hover:text-orange-300">Mark Read</button>
                     </div>
                     <div id="alerts-list" class="flex flex-col divide-y divide-gray-800/50">
                         <div class="p-8 text-center text-gray-500 text-xs">No alerts to display.</div>
                     </div>
+                </div>
                 </div>
             </div>
             
@@ -120,7 +132,7 @@
         </div>
 
         <!-- Right Content Area -->
-        <div class="flex-1 flex flex-col p-5 bg-[#0f172a] overflow-y-auto">
+        <div class="flex-1 flex flex-col p-5 bg-[#0a0a0a] overflow-y-auto">
             
             <!-- DASHBOARD TAB -->
             <div id="tab-dashboard" class="flex flex-col flex-1 gap-5">
@@ -175,22 +187,19 @@
             </div>
 
             <!-- S-TATECON TAB (Hidden by default) -->
+                        <!-- S-TATECON TAB (Hidden by default) -->
             <div id="tab-statecon" class="hidden flex-col flex-1 gap-5">
                 
-                <div class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden group">
-                    <div class="absolute inset-0 pointer-events-none bg-gradient-to-r from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div id="flowchart-card" class="bg-gray-900 border border-gray-800 rounded-xl p-6 relative overflow-hidden group cursor-pointer hover:border-orange-500/30 transition-all duration-300" onclick="toggleFullScreenFlowchart(event)">
+                    <div class="absolute inset-0 pointer-events-none bg-gradient-to-r from-orange-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                     <div class="flex justify-between items-center mb-6 relative z-10">
                         <h3 class="text-sm font-bold text-gray-400 tracking-wider flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                             Assembly Line Flow
                         </h3>
-                        
-                        <!-- Conveyor Belt Speed Control -->
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Conveyor Speed:</span>
-                            <input type="range" id="conveyor-speed-slider" min="0.5" max="3.0" step="0.1" value="1.0" class="w-24 h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
-                            <span id="conveyor-speed-val" class="text-xs font-bold text-blue-400 w-8">1.0x</span>
-                        </div>
+                        <button class="text-gray-500 hover:text-white transition-colors" title="Expand Flowchart">
+                            <svg id="flow-expand-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                        </button>
                     </div>
                     <div id="flow-container" class="relative w-full h-24 flex items-center justify-between px-10">
                         <!-- Connecting Line -->
@@ -200,83 +209,39 @@
                         <div class="relative z-10 flex flex-col items-center" id="flow-Pressing">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Pressing">A</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Pressing</span>
-                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Pressing">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Pressing">--</span></div>
                         </div>
                         
                         <div class="relative z-10 flex flex-col items-center" id="flow-Welding">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Welding">B</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Welding</span>
-                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Welding">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Welding">--</span></div>
                         </div>
                         
                         <div class="relative z-10 flex flex-col items-center" id="flow-Painting">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Painting">C</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Painting</span>
-                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Painting">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Painting">--</span></div>
                         </div>
 
                         <div class="relative z-10 flex flex-col items-center" id="flow-PowerTrain">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-PowerTrain">D</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">PowerTrain</span>
-                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-PowerTrain">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-PowerTrain">--</span></div>
                         </div>
                         
                         <div class="relative z-10 flex flex-col items-center" id="flow-Final_Assembly">
                             <div class="w-10 h-10 rounded-lg bg-gray-800 border-2 border-gray-700 flex items-center justify-center font-bold text-gray-300 shadow-sm transition-colors duration-300" id="box-Final_Assembly">E</div>
                             <span class="mt-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest">Final Assembly</span>
-                            <div class="mt-1 text-center leading-none"><span class="text-[8px] text-gray-600 block" id="inv-name-Final_Assembly">--</span><span class="text-[10px] font-mono font-bold text-cyan-500" id="inv-qty-Final_Assembly">--</span></div>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-                    <!-- S-TATECON Live Machine States -->
-                    <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col">
-                        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
-                            S-TATECON Live Machine States
+                <!-- INVENTORY TAB MERGED HERE -->
+                <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col flex-1">
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
+                            Real-Time BOM Inventory Tracking
                         </h3>
-                        <div class="overflow-hidden rounded-lg border border-gray-700/50 flex-1">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-gray-800 border-b border-gray-700">
-                                    <tr>
-                                        <th class="px-4 py-3 font-semibold text-gray-300">Machine ID</th>
-                                        <th class="px-4 py-3 font-semibold text-gray-300">Operational Status</th>
-                                        <th class="px-4 py-3 font-semibold text-gray-300 text-right">Cycle Time (Act / Tgt)</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="machines-table" class="divide-y divide-gray-800/50">
-                                    <!-- Populated by JS -->
-                                </tbody>
-                            </table>
-                        </div>
+                        <button onclick="saveInventory()" class="px-3 py-1 bg-orange-600 hover:bg-orange-500 text-white text-xs font-bold rounded shadow transition-colors">Apply Changes</button>
                     </div>
-
-                    <!-- Dynamic Configuration Panel -->
-                    <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col">
-                        <div class="flex justify-between items-center mb-6">
-                            <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 flex items-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                System Configuration
-                            </h3>
-                            <div class="flex gap-2">
-                                <button onclick="saveConfig()" class="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold rounded shadow transition-colors">Apply Changes</button>
-                            </div>
-                        </div>
-                        <div class="overflow-y-auto max-h-[600px] pr-2 flex-1" id="config-container">
-                            <!-- Populated by JS -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- INVENTORY TAB (Hidden by default) -->
-            <div id="tab-inventory" class="hidden flex-col flex-1 gap-5">
-                <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col h-full">
-                    <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>
-                        Real-Time BOM Inventory Tracking
-                    </h3>
                     <div class="overflow-hidden rounded-lg border border-gray-700/50 flex-1">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-gray-800 border-b border-gray-700">
@@ -298,41 +263,129 @@
             
             <!-- O-PTINECK TAB (Hidden by default) -->
             <div id="tab-optineck" class="hidden flex-col flex-1 gap-5">
-                <div class="bg-gray-900/60 p-8 rounded-xl border border-emerald-900/40 shadow-lg flex flex-col items-center justify-center flex-1 relative overflow-hidden">
-                    <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-gray-900/10 to-transparent pointer-events-none"></div>
+                <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 flex-1 h-full">
+                    <!-- Left Side: Live Machine States -->
+                    <div class="flex flex-col gap-5 overflow-y-auto">
+                        <div class="bg-gray-900/60 p-6 rounded-xl border border-gray-800/60 shadow-lg flex flex-col">
+                            <h3 class="text-sm font-bold uppercase tracking-wider text-gray-400 mb-6 flex items-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                                Live Machine States
+                            </h3>
+                            <div class="overflow-hidden rounded-lg border border-gray-700/50 flex-1">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="bg-gray-800 border-b border-gray-700">
+                                        <tr>
+                                            <th class="px-4 py-3 font-semibold text-gray-300">Machine ID</th>
+                                            <th class="px-4 py-3 font-semibold text-gray-300">Operational Status</th>
+                                            <th class="px-4 py-3 font-semibold text-gray-300 text-right">Cycle Time (Act / Tgt)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="machines-table" class="divide-y divide-gray-800/50">
+                                        <!-- Populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                     
-                    <div class="relative z-10 text-center max-w-2xl">
-                        <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
-                            <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        </div>
-                        <h2 class="text-2xl font-bold text-gray-100 mb-2">O-PTINECK Genetic Algorithm</h2>
-                        <p class="text-gray-400 mb-8 leading-relaxed">O-PTINECK runs a highly constrained stochastic line-balancing heuristic. It intelligently reallocates elemental workstation tasks across the assembly line to minimize the system bottleneck and maximize Dynamic Equilibrium Yield (DEY), subject to the Veto Engine's switching penalty constraints.</p>
+                    <!-- Right Side: O-PTINECK Algorithm & Controls -->
+                    <div class="bg-gray-900/60 p-8 rounded-xl border border-emerald-900/40 shadow-lg flex flex-col items-center justify-center relative overflow-hidden h-full">
+                        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-gray-900/10 to-transparent pointer-events-none"></div>
                         
-                        <div class="grid grid-cols-2 gap-4 mb-10 text-left">
-                            <div class="bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Current Bottleneck</span>
-                                <span class="font-mono text-2xl text-rose-400" id="optineck-btl-val">--</span>
+                        <div class="relative z-10 text-center max-w-2xl">
+                            <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-6">
+                                <svg class="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                             </div>
-                            <div class="bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg">
-                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Current DEY</span>
-                                <span class="font-mono text-2xl text-emerald-400" id="optineck-dey-val">--</span>
+                            <h2 class="text-2xl font-bold text-gray-100 mb-2">O-PTINECK Genetic Algorithm</h2>
+                            <p class="text-gray-400 mb-8 leading-relaxed">O-PTINECK runs a highly constrained stochastic line-balancing heuristic. It intelligently reallocates elemental workstation tasks across the assembly line to minimize the system bottleneck and maximize Dynamic Equilibrium Yield (DEY), subject to the Veto Engine's switching penalty constraints.</p>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-10 text-left">
+                                <div class="bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg">
+                                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Current Bottleneck</span>
+                                    <span class="font-mono text-2xl text-rose-400" id="optineck-btl-val">--</span>
+                                </div>
+                                <div class="bg-gray-800/50 border border-gray-700/50 p-4 rounded-lg">
+                                    <span class="text-[10px] text-gray-500 font-bold uppercase tracking-widest block mb-1">Current DEY</span>
+                                    <span class="font-mono text-2xl text-emerald-400" id="optineck-dey-val">--</span>
+                                </div>
                             </div>
-                        </div>
 
-                        <button onclick="runOptimizer()" class="group relative px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center gap-3 mx-auto overflow-hidden">
-                            <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
-                            <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                            <span class="relative z-10 tracking-wider">EXECUTE OPTIMIZATION SEQUENCE</span>
-                        </button>
+                            <button onclick="runOptimizer()" class="group relative px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] transition-all flex items-center gap-3 mx-auto overflow-hidden">
+                                <div class="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                                <svg class="w-5 h-5 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <span class="relative z-10 tracking-wider">EXECUTE OPTIMIZATION SEQUENCE</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
             
         </div>
     </div>
+    
+    <!-- Station Modal -->
+    <div id="station-modal" class="hidden fixed inset-0 z-[200] bg-gray-950/95 backdrop-blur-3xl flex-col items-center justify-center transition-all duration-300 opacity-0">
+        <!-- Close Button -->
+        <button onclick="closeStationModal()" class="absolute top-8 right-8 text-gray-500 hover:text-white transition-colors bg-gray-800/50 hover:bg-rose-500 rounded-full p-2">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+        </button>
 
-    <!-- Scripts -->
+        <div class="flex items-center gap-16">
+            <!-- Prev Button -->
+            <button onclick="prevStation(event)" class="text-gray-500 hover:text-white transition-colors p-4 bg-gray-900 rounded-full border border-gray-800 hover:border-orange-500">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+            </button>
+
+            <!-- Center Content -->
+            <div class="flex flex-col items-center bg-gray-900 border border-gray-800 p-12 rounded-2xl shadow-2xl min-w-[500px]">
+                <h2 id="modal-station-title" class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-orange-400 to-rose-400 tracking-widest uppercase mb-12">Station</h2>
+                
+                <!-- Machines Row -->
+                <div class="w-full mb-10 flex flex-col items-center">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Machines</span>
+                    <div id="modal-machines-container" class="flex gap-6 justify-center">
+                        <!-- Dots injected via JS -->
+                    </div>
+                </div>
+
+                <!-- Humans Row -->
+                <div class="w-full flex flex-col items-center">
+                    <span class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Human Operators</span>
+                    <div id="modal-humans-container" class="flex gap-6 justify-center">
+                        <!-- Dots injected via JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Next Button -->
+            <button onclick="nextStation(event)" class="text-gray-500 hover:text-white transition-colors p-4 bg-gray-900 rounded-full border border-gray-800 hover:border-orange-500">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+            </button>
+        </div>
+    </div>
+<!-- Scripts -->
     <script>
+
+        let simIsRunning = false;
+        async function toggleSimulation() {
+            simIsRunning = !simIsRunning;
+            const btn = document.getElementById('sim-toggle-btn');
+            if(simIsRunning) {
+                btn.innerHTML = `<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg> PAUSE`;
+                btn.className = "ml-4 px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold text-xs tracking-wider uppercase transition-colors shadow flex items-center gap-2";
+            } else {
+                btn.innerHTML = `<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> RESUME`;
+                btn.className = "ml-4 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs tracking-wider uppercase transition-colors shadow flex items-center gap-2";
+            }
+            try {
+                await fetch('/api/toggle_sim', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({state: simIsRunning ? 1.0 : 0.0})
+                });
+            } catch(e) {}
+        }
+
         let currentNode = null;
         let chartInstance = null;
         let plcChartInstance = null;
@@ -340,12 +393,12 @@
         const plcCtx = document.getElementById('plcChart').getContext('2d');
 
         function switchTab(tab) {
-            const tabs = ['dashboard', 'statecon', 'inventory', 'optineck'];
+            const tabs = ['dashboard', 'statecon', 'optineck'];
             tabs.forEach(t => {
                 if (t === tab) {
                     document.getElementById(`tab-${t}`).classList.remove('hidden');
                     document.getElementById(`tab-${t}`).classList.add('flex');
-                    document.getElementById(`tab-btn-${t}`).className = "px-5 py-2 bg-blue-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm";
+                    document.getElementById(`tab-btn-${t}`).className = "px-5 py-2 bg-orange-600/90 text-white rounded-md font-semibold text-sm transition-all shadow-sm";
                 } else {
                     document.getElementById(`tab-${t}`).classList.add('hidden');
                     document.getElementById(`tab-${t}`).classList.remove('flex');
@@ -391,7 +444,7 @@
                         if (a.severity === 'CRITICAL') icon = '<div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>';
                         if (a.severity === 'WARNING') icon = '<div class="w-2 h-2 rounded-full bg-amber-500"></div>';
                         if (a.severity === 'SUCCESS') icon = '<div class="w-2 h-2 rounded-full bg-emerald-500"></div>';
-                        if (a.severity === 'INFO') icon = '<div class="w-2 h-2 rounded-full bg-blue-500"></div>';
+                        if (a.severity === 'INFO') icon = '<div class="w-2 h-2 rounded-full bg-orange-500"></div>';
                         
                         html += `
                             <div class="p-4 flex gap-3 ${a.is_read ? 'opacity-60' : 'bg-gray-800/30'}">
@@ -428,13 +481,13 @@
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
-                data: { labels: Array.from({length: 500}, (_, i) => i), datasets: [] },
+                data: { labels: Array.from({length: 500}, (_, i) => ((i/499) * 10).toFixed(1) + 's'), datasets: [] },
                 options: chartOptions
             });
 
             plcChartInstance = new Chart(plcCtx, {
                 type: 'line',
-                data: { labels: Array.from({length: 500}, (_, i) => i), datasets: [] },
+                data: { labels: Array.from({length: 500}, (_, i) => ((i/499) * 10).toFixed(1) + 's'), datasets: [] },
                 options: chartOptions
             });
         }
@@ -449,6 +502,67 @@
             } else {
                 svg.style.transform = 'rotate(90deg)';
             }
+        }
+        
+        const stationDetails = [
+            { id: 'Pressing', name: 'Pressing', machines: 3, humans: 2, letter: 'A' },
+            { id: 'Welding', name: 'Welding', machines: 2, humans: 4, letter: 'B' },
+            { id: 'Painting', name: 'Painting', machines: 5, humans: 5, letter: 'C' },
+            { id: 'PowerTrain', name: 'PowerTrain', machines: 4, humans: 3, letter: 'D' },
+            { id: 'Final_Assembly', name: 'Final Assembly', machines: 2, humans: 5, letter: 'E' }
+        ];
+        let currentStationIndex = 0;
+
+        function toggleFullScreenFlowchart(e) {
+            e.stopPropagation();
+            openStationModal(0);
+        }
+
+        function openStationModal(index = null) {
+            if (index !== null) currentStationIndex = index;
+            renderStationModal();
+            const modal = document.getElementById('station-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+        }
+
+        function closeStationModal() {
+            const modal = document.getElementById('station-modal');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        function prevStation(e) {
+            if(e) e.stopPropagation();
+            currentStationIndex = (currentStationIndex - 1 + stationDetails.length) % stationDetails.length;
+            renderStationModal();
+        }
+
+        function nextStation(e) {
+            if(e) e.stopPropagation();
+            currentStationIndex = (currentStationIndex + 1) % stationDetails.length;
+            renderStationModal();
+        }
+
+        function renderStationModal() {
+            const st = stationDetails[currentStationIndex];
+            document.getElementById('modal-station-title').innerText = `${st.letter} - ${st.name}`;
+            
+            let machinesHtml = '';
+            for(let i=0; i<st.machines; i++) {
+                machinesHtml += `<div class="w-10 h-10 rounded-full bg-orange-500 shadow-[0_0_15px_rgba(249,115,22,0.6)]"></div>`;
+            }
+            document.getElementById('modal-machines-container').innerHTML = machinesHtml;
+            
+            let humansHtml = '';
+            for(let i=0; i<st.humans; i++) {
+                humansHtml += `<div class="w-10 h-10 rounded-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.6)]"></div>`;
+            }
+            document.getElementById('modal-humans-container').innerHTML = humansHtml;
         }
 
         let expandedChart = null;
@@ -494,6 +608,10 @@
                 
                 document.getElementById('dey-val').innerText = data.dey.toFixed(2);
                 document.getElementById('btl-val').innerText = data.bottleneck;
+                
+                if (document.getElementById('units-val')) {
+                    document.getElementById('units-val').innerText = data.units;
+                }
                 
                 if (document.getElementById('optineck-dey-val')) {
                     document.getElementById('optineck-dey-val').innerText = data.dey.toFixed(2);
@@ -575,139 +693,109 @@
         
         // Dedicated Mockup Animation for UI Flowchart
         // Dedicated Mockup Animation for UI Flowchart
-        function startFakeFlowAnimation() {
-            const container = document.getElementById('flow-container');
-            if (!container) return;
-            
-            const steps = [
-                { type: 'spawn', id: null },
-                { type: 'station', id: 'Pressing' },
-                { type: 'buffer', prev: 'Pressing', next: 'Welding' },
-                { type: 'station', id: 'Welding' },
-                { type: 'buffer', prev: 'Welding', next: 'Painting' },
-                { type: 'station', id: 'Painting' },
-                { type: 'buffer', prev: 'Painting', next: 'PowerTrain' },
-                { type: 'station', id: 'PowerTrain' },
-                { type: 'buffer', prev: 'PowerTrain', next: 'Final_Assembly' },
-                { type: 'station', id: 'Final_Assembly' },
-                { type: 'complete', id: null }
-            ];
-            
-            let activeDots = []; // { el: DOMElement, step: 0 }
-            let tickCounter = 0;
-            
-            function getLeftPos(stepIndex) {
-                const step = steps[stepIndex];
+        // True backend-driven animation
+        let activeDots = {}; 
+        
+        async function syncPartAnimation() {
+            try {
+                const res = await fetch('/api/parts');
+                const parts = await res.json();
+                
+                const container = document.getElementById('flow-container');
+                if (!container) return;
                 const cRect = container.getBoundingClientRect();
+                const scaleX = cRect.width / (container.offsetWidth || 1);
                 
-                if (step.type === 'spawn') {
-                    const box = document.getElementById('box-' + steps[1].id);
-                    if (!box) return 0;
-                    return box.getBoundingClientRect().left - cRect.left - 40;
-                } else if (step.type === 'station') {
-                    const box = document.getElementById('box-' + step.id);
-                    if (!box) return 0;
-                    const r = box.getBoundingClientRect();
-                    return r.left - cRect.left + (r.width / 2);
-                } else if (step.type === 'buffer') {
-                    const prevBox = document.getElementById('box-' + step.prev);
-                    const nextBox = document.getElementById('box-' + step.next);
-                    if (!prevBox || !nextBox) return 0;
-                    const pr = prevBox.getBoundingClientRect();
-                    const nr = nextBox.getBoundingClientRect();
-                    return ((pr.left + pr.width / 2) + (nr.left + nr.width / 2)) / 2 - cRect.left;
-                } else if (step.type === 'complete') {
-                    const box = document.getElementById('box-' + steps[stepIndex-1].id);
-                    if (!box) return 0;
-                    return box.getBoundingClientRect().right - cRect.left + 40;
-                }
-                return 0;
-            }
-            
-            async function masterTick() {
-                // Read Conveyor Speed
-                const speedFactor = parseFloat(document.getElementById('conveyor-speed-slider').value) || 1.0;
-                document.getElementById('conveyor-speed-val').innerText = speedFactor.toFixed(1) + 'x';
+                const locations = {
+                    'Buffer_Raw': ['Inbound', 'box-Pressing'],
+                    'Pressing': 'box-Pressing',
+                    'Conveyor (To Welding)': ['box-Pressing', 'box-Welding'],
+                    'Welding': 'box-Welding',
+                    'Conveyor (To Painting)': ['box-Welding', 'box-Painting'],
+                    'Painting': 'box-Painting',
+                    'Conveyor (To PowerTrain)': ['box-Painting', 'box-PowerTrain'],
+                    'PowerTrain': 'box-PowerTrain',
+                    'Conveyor (To Final_Assembly)': ['box-PowerTrain', 'box-Final_Assembly'],
+                    'Final_Assembly': 'box-Final_Assembly',
+                    'Conveyor (To Completed)': ['box-Final_Assembly', 'Outbound']
+                };
                 
-                const moveTime = 700 / speedFactor;
-                const processTime = 1300 / speedFactor;
-                const bufferPadding = 200 / speedFactor;
-
-                // 1. Advance all active dots
-                activeDots.forEach(dotObj => {
-                    dotObj.step++;
-                });
+                const currentPartIds = parts.map(p => p.part_id);
                 
-                // 2. Spawn a new dot every 2 ticks (so there is a 1-station gap between dots)
-                if (tickCounter % 2 === 0) {
-                    const newDot = document.createElement('div');
-                    newDot.className = "absolute w-3 h-3 bg-blue-400 border border-white/40 rounded-full shadow-[0_0_15px_rgba(59,130,246,1)] z-20 opacity-0";
-                    newDot.style.top = '50%';
-                    newDot.style.transform = 'translate(-50%, -50%)';
-                    newDot.style.left = getLeftPos(0) + 'px';
-                    container.appendChild(newDot);
-                    
-                    // Force layout
-                    newDot.offsetHeight; 
-                    newDot.style.opacity = '1';
-                    
-                    activeDots.push({ el: newDot, step: 1 });
-                }
-                tickCounter++;
-                
-                // 3. Move all dots visually
-                activeDots.forEach(dotObj => {
-                    dotObj.el.style.transition = `all ${moveTime}ms ease-in-out`;
-                    if (dotObj.step < steps.length) {
-                        dotObj.el.style.left = getLeftPos(dotObj.step) + 'px';
+                // Remove completed parts
+                Object.keys(activeDots).forEach(pid => {
+                    if (!currentPartIds.includes(pid)) {
+                        activeDots[pid].remove();
+                        delete activeDots[pid];
                     }
                 });
                 
-                // Wait for CSS transition to physically move the dots
-                await new Promise(r => setTimeout(r, moveTime));
-                
-                // 4. For dots that landed on a station, highlight the station
-                const highlightedBoxes = [];
-                activeDots.forEach(dotObj => {
-                    if (dotObj.step < steps.length) {
-                        const step = steps[dotObj.step];
-                        if (step.type === 'station') {
-                            const box = document.getElementById('box-' + step.id);
-                            if (box) {
-                                box.classList.replace('border-gray-700', 'border-blue-500');
-                                box.classList.add('bg-blue-900/40', 'text-blue-400');
-                                highlightedBoxes.push(box);
-                            }
-                        } else if (step.type === 'complete') {
-                            dotObj.el.style.opacity = '0';
+                parts.forEach(part => {
+                    let dot = activeDots[part.part_id];
+                    if (!dot) {
+                        dot = document.createElement('div');
+                        dot.className = "absolute w-4 h-4 rounded-full z-20 flex items-center justify-center text-[9px] font-bold text-white shadow-lg";
+                        dot.style.top = '50%';
+                        dot.style.transform = 'translate(-50%, -50%)';
+                        dot.innerText = part.part_id.replace('Car', '');
+                        
+                        // Initial spawn position if it's inbound
+                        const isLoc = locations[part.current_location];
+                        if (Array.isArray(isLoc) && isLoc[0] === 'Inbound') {
+                            dot.style.left = '-50px';
+                        } else {
+                            dot.style.left = '0px'; 
                         }
+                        
+                        container.appendChild(dot);
+                        // Force layout so transition happens from the spawned left position
+                        void dot.offsetWidth;
+                        
+                        activeDots[part.part_id] = dot;
                     }
-                });
-                
-                // 5. Wait for "processing" or "buffering" time
-                await new Promise(r => setTimeout(r, processTime));
-                
-                // 6. Un-highlight boxes
-                highlightedBoxes.forEach(box => {
-                    box.classList.replace('border-blue-500', 'border-gray-700');
-                    box.classList.remove('bg-blue-900/40', 'text-blue-400');
-                });
-                
-                // 7. Cleanup completed dots
-                activeDots = activeDots.filter(dotObj => {
-                    if (dotObj.step >= steps.length - 1) {
-                        setTimeout(() => dotObj.el.remove(), 1000);
-                        return false;
+                    
+                    const loc = locations[part.current_location];
+                    if (!loc) return;
+                    
+                    let targetLeft = 0;
+                    if (Array.isArray(loc)) {
+                        // In Transit - Glide continuously all the way to destination
+                        if (loc[1] === 'Outbound') {
+                            targetLeft = (cRect.width / scaleX) + 50; // Roll completely off screen right
+                        } else {
+                            const b2 = document.getElementById(loc[1]);
+                            if (b2) {
+                                const r2 = b2.getBoundingClientRect();
+                                targetLeft = (r2.left - cRect.left + (r2.width / 2)) / scaleX;
+                            }
+                        }
+                        dot.style.backgroundColor = '#f97316'; // Blue transit
+                        dot.style.boxShadow = '0 0 15px rgba(249,115,22,1)';
+                    } else {
+                        // In Station
+                        const b = document.getElementById(loc);
+                        if(b) {
+                            const r = b.getBoundingClientRect();
+                            targetLeft = (r.left - cRect.left + (r.width / 2)) / scaleX;
+                        }
+                        dot.style.backgroundColor = '#34d399'; // Emerald processing
+                        dot.style.boxShadow = '0 0 25px rgba(52,211,153,1)';
                     }
-                    return true;
+                    
+                    
+                    if (simIsRunning) {
+                        if (Array.isArray(loc)) {
+                            dot.style.transition = 'left 5.0s linear, background-color 0.5s ease, box-shadow 0.5s ease';
+                        } else {
+                            dot.style.transition = 'left 1.0s ease-out, background-color 0.5s ease, box-shadow 0.5s ease';
+                        }
+                    } else {
+                        dot.style.transition = 'none';
+                    }
+                    dot.style.left = targetLeft + 'px';
+
                 });
-                
-                // Schedule next tick
-                setTimeout(masterTick, bufferPadding);
-            }
-            
-            // Start loop
-            masterTick();
+            } catch(e) {}
         }
 
         function playAlarmSound() {
@@ -772,39 +860,39 @@
             } catch (e) {}
         }
 
+        
+        async function saveInventory() {
+            const inputs = document.querySelectorAll('input[id^="inv-"]');
+            const data = {};
+            inputs.forEach(inp => {
+                const key = inp.id.replace('inv-', '');
+                data[key] = inp.value;
+            });
+            try {
+                await fetch('/api/inventory', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(data)
+                });
+                fetchInventory();
+            } catch (e) {}
+        }
+
+        
         async function fetchInventory() {
+            if (document.activeElement && document.activeElement.id && document.activeElement.id.startsWith('inv-')) return;
             try {
                 const res = await fetch('/api/inventory');
                 const data = await res.json();
                 
                 let tableHtml = '';
-                let updatedStations = new Set();
                 
                 for (const compositeKey in data) {
                     const inv = data[compositeKey];
                     const stationId = inv.station_id;
                     
-                    // Only update flowchart for the first (primary) part to avoid UI clutter
-                    if (!updatedStations.has(stationId)) {
-                        const nameEl = document.getElementById('inv-name-' + stationId);
-                        const qtyEl = document.getElementById('inv-qty-' + stationId);
-                        if (nameEl && qtyEl) {
-                            nameEl.innerText = inv.part_id.replace(/_/g, ' ');
-                            qtyEl.innerText = inv.on_hand;
-                            
-                            // Flash red if starving
-                            if (inv.on_hand < inv.qty_per_car) {
-                                qtyEl.classList.replace('text-cyan-500', 'text-rose-500');
-                                qtyEl.classList.add('animate-pulse');
-                            } else {
-                                qtyEl.classList.replace('text-rose-500', 'text-cyan-500');
-                                qtyEl.classList.remove('animate-pulse');
-                            }
-                        }
-                        updatedStations.add(stationId);
-                    }
-                    
-                    // Populate new Inventory Tab table with ALL components
+                    // Populate Inventory Tab table with ALL components
+
                     const isStarving = inv.on_hand < inv.qty_per_car;
                     const statusDot = isStarving ? '<div class="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></div>' : '<div class="w-2 h-2 rounded-full bg-emerald-500"></div>';
                     const stockClass = isStarving ? 'text-rose-400 font-bold' : 'text-cyan-400 font-mono';
@@ -815,7 +903,9 @@
                             <td class="px-6 py-4 text-gray-300">${inv.part_id.replace(/_/g, ' ')}</td>
                             <td class="px-6 py-4 flex items-center gap-2">${statusDot} ${stationId.replace(/_/g, ' ')}</td>
                             <td class="px-6 py-4 text-center font-mono text-gray-500">${inv.qty_per_car}</td>
-                            <td class="px-6 py-4 text-right ${stockClass}">${inv.on_hand}</td>
+                            <td class="px-6 py-4 text-right">
+                                <input type="number" id="inv-${compositeKey}" value="${inv.on_hand}" class="w-20 bg-gray-800 border border-gray-700 text-gray-200 rounded px-2 py-1 text-right focus:border-orange-500 focus:outline-none ${stockClass}">
+                            </td>
                         </tr>
                     `;
                 }
@@ -824,40 +914,7 @@
             } catch (e) {}
         }
 
-        async function fetchConfig() {
-            try {
-                const res = await fetch('/api/config');
-                const data = await res.json();
-                
-                let html = '';
-                const labels = {
-                    'global': 'Global Shift Parameters',
-                    'station': 'Station Cycle Times (s)',
-                    'buffer': 'Buffer Capacities (Units)',
-                    'bom_qty': 'BOM Required Per Car',
-                    'bom_onhand': 'Starting BOM Inventory'
-                };
-                
-                for (const group in data) {
-                    html += `<div class="mb-4">
-                        <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 border-b border-gray-700/50 pb-1">${labels[group]}</h4>
-                        <div class="grid grid-cols-2 gap-3">`;
-                    
-                    for (const key in data[group]) {
-                        html += `
-                            <div class="flex flex-col bg-gray-800/50 p-2 rounded border border-gray-700/50">
-                                <label class="text-[10px] text-gray-400 font-mono mb-1 truncate" title="${key}">${key}</label>
-                                <input type="number" step="0.1" id="cfg_${key}" data-key="${key}" value="${data[group][key]}" class="bg-gray-900 border border-gray-600 text-gray-200 text-sm rounded px-2 py-1 outline-none focus:border-blue-500 w-full font-mono config-input">
-                            </div>
-                        `;
-                    }
-                    html += `</div></div>`;
-                }
-                
-                document.getElementById('config-container').innerHTML = html;
-            } catch (e) {}
-        }
-
+        
         async function saveConfig() {
             const inputs = document.querySelectorAll('.config-input');
             const payload = {};
@@ -875,10 +932,10 @@
                 const btn = document.querySelector('button[onclick="saveConfig()"]');
                 const origText = btn.innerText;
                 btn.innerText = "Saved!";
-                btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+                btn.classList.replace('bg-orange-600', 'bg-emerald-600');
                 setTimeout(() => {
                     btn.innerText = origText;
-                    btn.classList.replace('bg-emerald-600', 'bg-blue-600');
+                    btn.classList.replace('bg-emerald-600', 'bg-orange-600');
                 }, 1500);
             } catch (e) {}
         }
@@ -890,7 +947,7 @@
                 
                 if (data.status === 'applied') {
                     alert(`O-PTINECK Optimization Applied!\n\nBottleneck reduced from ${data.old_bottleneck}s to ${data.new_bottleneck}s.\nDEY increased from ${data.old_dey} to ${data.new_dey} parts/hour.\nProjected time saved per shift: ${data.projected_time_saved_sec} seconds.`);
-                    fetchConfig(); // Reload the UI fields
+                     // Reload the UI fields
                 } else if (data.status === 'rejected') {
                     alert(`O-PTINECK Optimization VETOED by Physics Engine!\n\nReason: ${data.reason}\nTime saved (${data.time_saved}s) is insufficient to overcome switching costs.`);
                 } else {
@@ -910,15 +967,16 @@
             
             fetchState();
             fetchInventory();
-            fetchConfig();
+            
             fetchAlerts();
-            startFakeFlowAnimation();
+            syncPartAnimation();
             fetchTelemetry();
             setInterval(() => {
                 fetchState();
                 fetchInventory();
                 fetchAlerts();
                 fetchTelemetry();
+                syncPartAnimation();
             }, 1000);
         }, 3000);
     </script>

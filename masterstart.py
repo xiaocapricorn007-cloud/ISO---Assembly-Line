@@ -106,7 +106,7 @@ def main():
         
         # Wait for Server to boot
         time.sleep(2.0)
-        print("[MASTER] 🌐 Web Dashboard is live! Open http://127.0.0.1:5000/ in your browser.")
+        print("[MASTER] Web Dashboard is live! Open http://127.0.0.1:5000/ in your browser.")
         
         # 3. Launch Main Simulation
         print("[MASTER] Launching Factory Simulation...")
@@ -124,16 +124,13 @@ def main():
         print(" SYSTEM ONLINE. Press Ctrl+C to force exit.")
         print("===========================================")
         
-        # 4. Block and wait until user stops the script
-        while True:
-            time.sleep(1)
-            # If both processes died on their own, exit
-            if all(p.poll() is not None for p in processes):
-                print("[MASTER] All child processes have exited.")
-                break
-                
-    except KeyboardInterrupt:
-        print("\n[MASTER] Force exit requested. Terminating all processes...")
+        try:
+            print("[MASTER] Running Autonomous Digital Twin...")
+            print("[MASTER] Waiting for operator to START SIMULATION in the Web UI...")
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            print("\n[MASTER] Ctrl+C detected. Initiating shutdown...")
     finally:
         # 5. Graceful Cleanup
         for p in processes:

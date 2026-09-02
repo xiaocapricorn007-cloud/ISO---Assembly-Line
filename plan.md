@@ -19,7 +19,7 @@
 ## Phase 4: SimPy Environment Remodel
 - [x] **Buffers**: Add Buffer Queues between stations in `simulation/factory_env.py` to handle "Throttle Flow / Sub-line Buffering".
 - [x] **Inventory**: Integrate `simpy.Container` to physically model raw material inventory.
-- [x] **Repair Mechanics**: Implemented a 50s sim-time shutdown repair loop when anomalies trigger to properly model downtime.
+- [x] **(Scrapped) Repair Mechanics**: The 50s sim-time shutdown repair loop was scrapped to favor a continuous, rigid pulsed simulation flow where anomalous machines merely delay their single cycle.
 
 ## Phase 5: Web Dashboard & Integration
 - [x] Update `core/optineck.py` to use strict time-based boundary checks.
@@ -33,4 +33,10 @@
 - [x] **Model Tuning**: Deepened TCN Autoencoder epochs, tripled datasets, and implemented rigorous Z-Score statistical thresholding to eliminate false positives and boost PR-AUC.
 - [x] **Evaluation Matrix**: Intercept `Ctrl+C` in `masterstart.py` to dump a full Scikit-Learn evaluation matrix (ROC-AUC, PR-AUC, F1-Scores) comparing hidden Ground Truths to ML Predictions.
 - [x] **Visual Assembly Flowchart**: Overhauled the S-TATECON dashboard tab with a highly-polished decoupled CSS-driven animation simulating multi-part physical transit along the conveyor line.
-- [ ] **Stock & Inventory Logic**: Bind the backend SimPy block inventory dynamically to the UI Flowchart tracking logic.
+- [x] **(Scrapped) Flowchart Inventory Logic**: Decided NOT to bind the SimPy block inventory directly to the visual flowchart DOM elements to prevent UI clutter. The inventory remains tracked via the dedicated S-TATECON inventory table tab instead.
+
+## Phase 7: Real-time Synchronized Pulsed Line
+- [x] **Strict Cycle Sync**: Overhauled the asynchronous simulation engine into a globally synchronized \master_line_loop\. All 16 machines process simultaneously (10s) and transit simultaneously (5s).
+- [x] **Global Pausing**: Implemented a \simulation_running\ SQLite flag and a custom \pausable_timeout\ generator in SimPy, allowing the UI's Start/Pause button to seamlessly freeze the physics engine, database updates, and CSS animations in real time.
+- [x] **Visual State Fidelity**: Removed UI desync bugs. Machines are explicitly forced to \IDLE\ in the database exactly when the dots visually begin traversing the conveyor belt. 
+- [x] **Cycle Time Alignment**: Fixed hidden hardcoded station overrides in \statecon.py\ that were disrupting the 10.0s global \	arget_cycle_time\. The pipeline now flawlessly pulses exactly as intended.
